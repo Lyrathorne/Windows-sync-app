@@ -1,0 +1,16 @@
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\bin\Debug\net8.0\DeviceSync.Application.deps.json
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\bin\Debug\net8.0\DeviceSync.Application.dll
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\bin\Debug\net8.0\DeviceSync.Application.pdb
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\bin\Debug\net8.0\DeviceSync.Protocol.dll
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\bin\Debug\net8.0\DeviceSync.Protocol.pdb
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\DeviceSync.Application.csproj.AssemblyReference.cache
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\DeviceSync.Application.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\DeviceSync.Application.AssemblyInfoInputs.cache
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\DeviceSync.Application.AssemblyInfo.cs
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\DeviceSync.Application.csproj.CoreCompileInputs.cache
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\DeviceSync.Application.sourcelink.json
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\DeviceSy.33A9AF8D.Up2Date
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\DeviceSync.Application.dll
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\refint\DeviceSync.Application.dll
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\DeviceSync.Application.pdb
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.Application\obj\Debug\net8.0\ref\DeviceSync.Application.dll

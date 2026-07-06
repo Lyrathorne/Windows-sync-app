@@ -1,0 +1,39 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v8.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v8.0": {
+      "DeviceSync.Application/1.0.0": {
+        "dependencies": {
+          "DeviceSync.Protocol": "1.0.0"
+        },
+        "runtime": {
+          "DeviceSync.Application.dll": {}
+        }
+      },
+      "DeviceSync.Protocol/1.0.0": {
+        "runtime": {
+          "DeviceSync.Protocol.dll": {
+            "assemblyVersion": "1.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "DeviceSync.Application/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "DeviceSync.Protocol/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}

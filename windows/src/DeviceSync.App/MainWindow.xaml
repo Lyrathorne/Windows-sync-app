@@ -10,6 +10,8 @@
             <RowDefinition Height="16" />
             <RowDefinition Height="Auto" />
             <RowDefinition Height="16" />
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="16" />
             <RowDefinition Height="*" />
             <RowDefinition Height="Auto" />
         </Grid.RowDefinitions>
@@ -73,6 +75,34 @@
 
         <Border Grid.Row="6" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="6" Padding="16">
             <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="190" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="180" />
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <TextBlock Text="Adding phone" FontWeight="SemiBold" />
+                <TextBlock Grid.Column="1" Text="{Binding PairingState}" />
+                <Image Grid.Column="2" Grid.RowSpan="7" Source="{Binding PairingQrImage}" Width="160" Height="160" Stretch="Uniform" />
+                <TextBlock Grid.Row="2" Text="Windows name" FontWeight="SemiBold" />
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PairingDeviceName}" />
+                <TextBlock Grid.Row="4" Text="Time remaining" FontWeight="SemiBold" />
+                <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding PairingTimeRemaining}" />
+                <TextBlock Grid.Row="6" Text="Verification code" FontWeight="SemiBold" />
+                <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding PairingVerificationCode}" FontSize="18" FontWeight="SemiBold" />
+            </Grid>
+        </Border>
+
+        <Border Grid.Row="8" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="6" Padding="16">
+            <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="12" />
@@ -105,10 +135,13 @@
             </Grid>
         </Border>
 
-        <StackPanel Grid.Row="7" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+        <StackPanel Grid.Row="9" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
             <Button Content="Start" Width="88" Margin="0,0,8,0" Command="{Binding StartCommand}" />
             <Button Content="Stop" Width="88" Margin="0,0,8,0" Command="{Binding StopCommand}" />
             <Button Content="Discovery" Width="88" Margin="0,0,8,0" Command="{Binding RestartDiscoveryCommand}" />
+            <Button Content="Add phone" Width="96" Margin="0,0,8,0" Command="{Binding AddPhoneCommand}" />
+            <Button Content="New code" Width="88" Margin="0,0,8,0" Command="{Binding NewPairingCodeCommand}" />
+            <Button Content="Cancel pairing" Width="112" Margin="0,0,8,0" Command="{Binding CancelPairingCommand}" />
             <Button Content="Disconnect" Width="104" Command="{Binding DisconnectCommand}" />
         </StackPanel>
     </Grid>

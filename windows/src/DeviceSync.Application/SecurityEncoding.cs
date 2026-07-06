@@ -89,10 +89,10 @@ public static class TranscriptBuilder
     public static byte[] Build(params string[] fields)
     {
         using var stream = new MemoryStream();
+        Span<byte> length = stackalloc byte[4];
         foreach (var field in fields)
         {
             var bytes = Encoding.UTF8.GetBytes(field);
-            Span<byte> length = stackalloc byte[4];
             BinaryPrimitives.WriteInt32BigEndian(length, bytes.Length);
             stream.Write(length);
             stream.Write(bytes);

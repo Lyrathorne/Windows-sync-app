@@ -1,0 +1,13 @@
+{
+  "version": 2,
+  "dgSpecHash": "yCYHWDA8o2A=",
+  "success": true,
+  "projectFilePath": "C:\\Users\\Gleb\\Documents\\Windows sync app\\windows\\src\\DeviceSync.Infrastructure\\DeviceSync.Infrastructure.csproj",
+  "expectedPackageFiles": [
+    "C:\\Users\\Gleb\\.nuget\\packages\\microsoft.extensions.dependencyinjection.abstractions\\8.0.2\\microsoft.extensions.dependencyinjection.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\Gleb\\.nuget\\packages\\microsoft.extensions.logging.abstractions\\8.0.2\\microsoft.extensions.logging.abstractions.8.0.2.nupkg.sha512",
+    "C:\\Users\\Gleb\\.nuget\\packages\\qrcoder\\1.6.0\\qrcoder.1.6.0.nupkg.sha512",
+    "C:\\Users\\Gleb\\.nuget\\packages\\system.security.cryptography.protecteddata\\8.0.0\\system.security.cryptography.protecteddata.8.0.0.nupkg.sha512"
+  ],
+  "logs": []
+}
