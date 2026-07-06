@@ -1,0 +1,15 @@
+{
+  "sessionId": "pair-test",
+  "windowsDeviceId": "windows-test",
+  "androidDeviceId": "android-test",
+  "pairingSecret": "QEFCQ0RFRkdISUpLTE1OT1BRUlNUVVZXWFlaW1xdXl8",
+  "windowsFingerprint": "YvXFIt0M1gFOAKkY-_p23sih4W_t9CcrvjMIAEzgBIs",
+  "androidFingerprint": "alipEjFnUgu58tJFM3B0sakZlgxX3STzwQHbslRboxU",
+  "androidNonce": "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8",
+  "windowsNonce": "ICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj8",
+  "expectedRequestTranscriptBase64": "AAAAE0RldmljZVN5bmNQYWlyaW5nVjEAAAAJcGFpci10ZXN0AAAADHdpbmRvd3MtdGVzdAAAAAxhbmRyb2lkLXRlc3QAAAArWXZYRkl0ME0xZ0ZPQUtrWS1fcDIzc2loNFdfdDlDY3J2ak1JQUV6Z0JJcwAAACthbGlwRWpGblVndTU4dEpGTTNCMHNha1psZ3hYM1NUendRSGJzbFJib3hVAAAAK0FBRUNBd1FGQmdjSUNRb0xEQTBPRHhBUkVoTVVGUllYR0JrYUd4d2RIaDg",
+  "expectedChallengeTranscriptBase64": "AAAAHERldmljZVN5bmNQYWlyaW5nQ2hhbGxlbmdlVjEAAAAJcGFpci10ZXN0AAAADHdpbmRvd3MtdGVzdAAAAAxhbmRyb2lkLXRlc3QAAAArWXZYRkl0ME0xZ0ZPQUtrWS1fcDIzc2loNFdfdDlDY3J2ak1JQUV6Z0JJcwAAACthbGlwRWpGblVndTU4dEpGTTNCMHNha1psZ3hYM1NUendRSGJzbFJib3hVAAAAK0FBRUNBd1FGQmdjSUNRb0xEQTBPRHhBUkVoTVVGUllYR0JrYUd4d2RIaDgAAAArSUNFaUl5UWxKaWNvS1NvckxDMHVMekF4TWpNME5UWTNPRGs2T3p3OVBqOA",
+  "expectedRequestHmac": "WRaXaNsmNgqpZCKuGh0NX5_qWD0958ZO-V4q5w7YGV0",
+  "expectedChallengeHmac": "bYDtZvVnHJUhZuwpgh26xwO7Z4JtRU5k28ZFgrB9R_Y",
+  "expectedVerificationCode": "757216"
+}

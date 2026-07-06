@@ -11,6 +11,8 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
     private readonly TcpDeviceServer _server;
     private readonly IServiceDiscoveryPublisher _publisher;
     private readonly IWindowsDeviceIdentityProvider _identityProvider;
+    private readonly IDeviceIdentityKeyProvider _keyProvider;
+    private readonly IPairingSessionManager _pairingSessionManager;
     private readonly ILogger<DeviceServerManager> _logger;
     private PublishedService? _lastService;
 
@@ -18,14 +20,19 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
         TcpDeviceServer server,
         IServiceDiscoveryPublisher publisher,
         IWindowsDeviceIdentityProvider identityProvider,
+        IDeviceIdentityKeyProvider keyProvider,
+        IPairingSessionManager pairingSessionManager,
         ILogger<DeviceServerManager>? logger = null)
     {
         _server = server;
         _publisher = publisher;
         _identityProvider = identityProvider;
+        _keyProvider = keyProvider;
+        _pairingSessionManager = pairingSessionManager;
         _logger = logger ?? NullLogger<DeviceServerManager>.Instance;
         _server.StateChanged += (_, args) => StateChanged?.Invoke(this, args);
         _server.SessionChanged += (_, args) => SessionChanged?.Invoke(this, args);
+        _pairingSessionManager.StateChanged += (_, _) => _ = RestartDiscoveryAsync();
     }
 
     public int Port => _server.Port;
@@ -68,6 +75,7 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
     {
         var settings = await _identityProvider.GetSettingsAsync(cancellationToken).ConfigureAwait(false);
         var deviceId = await _identityProvider.GetOrCreateDeviceIdAsync(cancellationToken).ConfigureAwait(false);
+        var fingerprint = await _keyProvider.GetPublicKeyFingerprintAsync(cancellationToken).ConfigureAwait(false);
         var instanceName = string.IsNullOrWhiteSpace(settings.DeviceName)
             ? Environment.MachineName
             : settings.DeviceName;
@@ -87,8 +95,14 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
                 ["appVersion"] = typeof(DeviceServerManager).Assembly.GetName().Version?.ToString() ?? "1.0",
                 ["pairingAvailable"] = "false",
                 ["capabilities"] = string.Join(',', SupportedCapabilities.Values),
+                ["identityFingerprint"] = fingerprint,
+                ["authVersion"] = "1",
             },
         };
+        if (_pairingSessionManager.State is PairingState.WaitingForDevice or PairingState.ProofVerified or PairingState.WaitingForUserConfirmation)
+        {
+            ((Dictionary<string, string>)service.TxtRecords)["pairingAvailable"] = "true";
+        }
 
         _lastService = service;
         try

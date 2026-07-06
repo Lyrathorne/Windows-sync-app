@@ -20,3 +20,19 @@ public interface IDataProtector
     byte[] Protect(byte[] plainBytes);
     byte[] Unprotect(byte[] protectedBytes);
 }
+
+public interface IQrCodeGenerator
+{
+    byte[] GeneratePng(string content, int pixelsPerModule);
+}
+
+public interface IPairingSessionManager
+{
+    PairingState State { get; }
+    PairingSession? CurrentSession { get; }
+    PairingQrPayload? CurrentQrPayload { get; }
+    event EventHandler? StateChanged;
+    Task<PairingQrPayload> StartPairingAsync(int port, IReadOnlyList<string> hostAddresses, CancellationToken cancellationToken = default);
+    Task CancelAsync(CancellationToken cancellationToken = default);
+    PairingSession? ConsumeIfProofValid(string sessionId, byte[] proof, byte[] transcript);
+}

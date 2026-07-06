@@ -3,5 +3,7 @@
     <ProjectReference Include="..\DeviceSync.Application\DeviceSync.Application.csproj" />
     <ProjectReference Include="..\DeviceSync.Protocol\DeviceSync.Protocol.csproj" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+    <PackageReference Include="QRCoder" Version="1.6.0" />
+    <PackageReference Include="System.Security.Cryptography.ProtectedData" Version="8.0.0" />
   </ItemGroup>
 </Project>

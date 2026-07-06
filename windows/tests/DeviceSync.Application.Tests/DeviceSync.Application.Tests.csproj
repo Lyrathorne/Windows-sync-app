@@ -4,6 +4,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\src\DeviceSync.Application\DeviceSync.Application.csproj" />
+    <ProjectReference Include="..\..\src\DeviceSync.Infrastructure\DeviceSync.Infrastructure.csproj" />
     <ProjectReference Include="..\..\src\DeviceSync.Protocol\DeviceSync.Protocol.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.10.0" />
     <PackageReference Include="xunit" Version="2.8.1" />

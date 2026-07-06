@@ -24,6 +24,12 @@ public partial class App : System.Windows.Application
             .ConfigureServices(services =>
             {
                 services.AddSingleton<IWindowsDeviceIdentityProvider, FileWindowsDeviceIdentityProvider>();
+                services.AddSingleton<IProtectedKeyStorage, FileProtectedKeyStorage>();
+                services.AddSingleton<IDataProtector, WindowsDataProtector>();
+                services.AddSingleton<IDeviceIdentityKeyProvider, WindowsDeviceIdentityKeyProvider>();
+                services.AddSingleton<IPairingSessionManager, PairingSessionManager>();
+                services.AddSingleton<ITrustedDeviceRepository, FileTrustedDeviceRepository>();
+                services.AddSingleton<IQrCodeGenerator, QrCodeGenerator>();
                 services.AddSingleton<DeviceSessionRegistry>();
                 services.AddSingleton<TcpDeviceServer>();
                 services.AddSingleton<IServiceDiscoveryPublisher, SimpleMdnsServiceDiscoveryPublisher>();
