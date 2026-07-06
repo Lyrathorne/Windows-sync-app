@@ -14,6 +14,7 @@ public sealed record PublishedService
     public required string InstanceName { get; init; }
     public required string ServiceType { get; init; }
     public required int Port { get; init; }
+    public string? AdvertisedAddress { get; init; }
     public IReadOnlyDictionary<string, string> TxtRecords { get; init; } = new Dictionary<string, string>();
 }
 

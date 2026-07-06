@@ -32,6 +32,11 @@ public sealed class SimpleMdnsServiceDiscoveryPublisher : IServiceDiscoveryPubli
     public DateTimeOffset? LastPublishedAtUtc { get; private set; }
     public event EventHandler<PublisherStateChangedEventArgs>? StateChanged;
 
+    public static byte[] BuildResponseForTest(PublishedService service, string hostName, IPAddress advertisedAddress)
+    {
+        return DnsMessage.BuildResponse(service, hostName, advertisedAddress);
+    }
+
     public async Task StartAsync(PublishedService service, CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -58,7 +63,7 @@ public sealed class SimpleMdnsServiceDiscoveryPublisher : IServiceDiscoveryPubli
             await AnnounceAsync(service, _cts.Token).ConfigureAwait(false);
             LastPublishedAtUtc = DateTimeOffset.UtcNow;
             SetState(PublisherState.Published, service, null);
-            _logger.LogInformation("Service published");
+            _logger.LogInformation("Service published at {AdvertisedAddress}", service.AdvertisedAddress);
         }
         catch (Exception error)
         {
@@ -118,7 +123,13 @@ public sealed class SimpleMdnsServiceDiscoveryPublisher : IServiceDiscoveryPubli
     private async Task AnnounceAsync(PublishedService service, CancellationToken cancellationToken)
     {
         var hostName = $"{Environment.MachineName}.local";
-        var packet = DnsMessage.BuildResponse(service, hostName);
+        if (string.IsNullOrWhiteSpace(service.AdvertisedAddress) ||
+            !IPAddress.TryParse(service.AdvertisedAddress, out var advertisedAddress))
+        {
+            throw new InvalidOperationException("No local network address is available for mDNS publication.");
+        }
+
+        var packet = DnsMessage.BuildResponse(service, hostName, advertisedAddress);
         await _udp!.SendAsync(packet, new IPEndPoint(MulticastAddress, MdnsPort), cancellationToken).ConfigureAwait(false);
     }
 
@@ -173,7 +184,7 @@ public sealed class SimpleMdnsServiceDiscoveryPublisher : IServiceDiscoveryPubli
                 || text.Contains("_services._dns-sd._udp", StringComparison.OrdinalIgnoreCase);
         }
 
-        public static byte[] BuildResponse(PublishedService service, string hostName)
+        public static byte[] BuildResponse(PublishedService service, string hostName, IPAddress advertisedAddress)
         {
             var serviceType = $"{service.ServiceType}.local";
             var instance = $"{service.InstanceName}.{serviceType}";
@@ -187,7 +198,7 @@ public sealed class SimpleMdnsServiceDiscoveryPublisher : IServiceDiscoveryPubli
             WritePtr(stream, serviceType, instance);
             WriteSrv(stream, instance, service.Port, hostName);
             WriteTxt(stream, instance, service.TxtRecords);
-            WriteA(stream, hostName);
+            WriteA(stream, hostName, advertisedAddress);
             return stream.ToArray();
         }
 
@@ -236,14 +247,8 @@ public sealed class SimpleMdnsServiceDiscoveryPublisher : IServiceDiscoveryPubli
             data.WriteTo(stream);
         }
 
-        private static void WriteA(Stream stream, string hostName)
+        private static void WriteA(Stream stream, string hostName, IPAddress address)
         {
-            var address = NetworkInterface.GetAllNetworkInterfaces()
-                .Where(n => n.OperationalStatus == OperationalStatus.Up)
-                .SelectMany(n => n.GetIPProperties().UnicastAddresses)
-                .Select(a => a.Address)
-                .FirstOrDefault(a => a.AddressFamily == AddressFamily.InterNetwork && !IPAddress.IsLoopback(a));
-            if (address is null) address = IPAddress.Loopback;
             WriteName(stream, hostName);
             WriteUInt16(stream, 1);
             WriteUInt16(stream, 1);

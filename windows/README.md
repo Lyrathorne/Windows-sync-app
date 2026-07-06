@@ -13,3 +13,17 @@ TXT records:
 `deviceId`, `deviceName`, `deviceType`, `protocolMin`, `protocolMax`, `appVersion`, `pairingAvailable`, `capabilities`.
 
 mDNS/DNS-SD is only for address discovery. It does not authenticate the computer; TCP hello handshake is still required, and cryptographic pairing is left for a later stage.
+
+## Windows Firewall
+
+If Android can see the Windows computer but TCP connection times out, allow DeviceSync for private networks in Windows Firewall. Manual rule:
+
+```powershell
+New-NetFirewallRule `
+  -DisplayName "DeviceSync TCP 54321" `
+  -Direction Inbound `
+  -Protocol TCP `
+  -LocalPort 54321 `
+  -Action Allow `
+  -Profile Private
+```

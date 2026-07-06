@@ -31,6 +31,12 @@ public interface IServiceDiscoveryPublisher
     Task StopAsync(CancellationToken cancellationToken = default);
 }
 
+public interface ILocalNetworkAddressProvider
+{
+    IReadOnlyList<string> GetLocalIPv4Addresses();
+    string? GetPrimaryLocalIPv4Address();
+}
+
 public interface IDiscoveryControl
 {
     Task RestartDiscoveryAsync(CancellationToken cancellationToken = default);

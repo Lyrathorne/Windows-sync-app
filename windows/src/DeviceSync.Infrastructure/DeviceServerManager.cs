@@ -13,6 +13,7 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
     private readonly IWindowsDeviceIdentityProvider _identityProvider;
     private readonly IDeviceIdentityKeyProvider _keyProvider;
     private readonly IPairingSessionManager _pairingSessionManager;
+    private readonly ILocalNetworkAddressProvider _addressProvider;
     private readonly ILogger<DeviceServerManager> _logger;
     private PublishedService? _lastService;
 
@@ -22,6 +23,7 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
         IWindowsDeviceIdentityProvider identityProvider,
         IDeviceIdentityKeyProvider keyProvider,
         IPairingSessionManager pairingSessionManager,
+        ILocalNetworkAddressProvider addressProvider,
         ILogger<DeviceServerManager>? logger = null)
     {
         _server = server;
@@ -29,6 +31,7 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
         _identityProvider = identityProvider;
         _keyProvider = keyProvider;
         _pairingSessionManager = pairingSessionManager;
+        _addressProvider = addressProvider;
         _logger = logger ?? NullLogger<DeviceServerManager>.Instance;
         _server.StateChanged += (_, args) => StateChanged?.Invoke(this, args);
         _server.SessionChanged += (_, args) => SessionChanged?.Invoke(this, args);
@@ -76,6 +79,13 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
         var settings = await _identityProvider.GetSettingsAsync(cancellationToken).ConfigureAwait(false);
         var deviceId = await _identityProvider.GetOrCreateDeviceIdAsync(cancellationToken).ConfigureAwait(false);
         var fingerprint = await _keyProvider.GetPublicKeyFingerprintAsync(cancellationToken).ConfigureAwait(false);
+        var advertisedAddress = _addressProvider.GetPrimaryLocalIPv4Address();
+        if (string.IsNullOrWhiteSpace(advertisedAddress))
+        {
+            _logger.LogWarning("Service publication skipped: no local network address was found");
+            return;
+        }
+
         var instanceName = string.IsNullOrWhiteSpace(settings.DeviceName)
             ? Environment.MachineName
             : settings.DeviceName;
@@ -85,6 +95,7 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
             InstanceName = instanceName,
             ServiceType = ServiceType,
             Port = _server.Port,
+            AdvertisedAddress = advertisedAddress,
             TxtRecords = new Dictionary<string, string>
             {
                 ["deviceId"] = deviceId,
@@ -107,7 +118,7 @@ public sealed class DeviceServerManager : IDeviceServer, IDiscoveryControl
         _lastService = service;
         try
         {
-            _logger.LogInformation("Service publication requested");
+            _logger.LogInformation("Service publication requested at {AdvertisedAddress}", advertisedAddress);
             await _publisher.StartAsync(service, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception error)

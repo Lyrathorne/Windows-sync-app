@@ -27,6 +27,11 @@ public sealed class PairingSessionManager : IPairingSessionManager
         IReadOnlyList<string> hostAddresses,
         CancellationToken cancellationToken = default)
     {
+        if (hostAddresses.Count == 0)
+        {
+            throw new InvalidOperationException("Не найден адрес локальной сети");
+        }
+
         SetState(PairingState.Starting);
         var settings = await _deviceIdentityProvider.GetSettingsAsync(cancellationToken).ConfigureAwait(false);
         var deviceId = await _deviceIdentityProvider.GetOrCreateDeviceIdAsync(cancellationToken).ConfigureAwait(false);

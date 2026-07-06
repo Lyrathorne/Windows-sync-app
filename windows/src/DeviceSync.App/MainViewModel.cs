@@ -3,8 +3,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Collections.ObjectModel;
-using System.Net.NetworkInformation;
-using System.Net.Sockets;
 using System.Text.Json;
 using System.IO;
 using DeviceSync.Application;
@@ -20,6 +18,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly IPairingSessionManager _pairingSessionManager;
     private readonly ITrustedDeviceRepository _trustedDeviceRepository;
     private readonly IQrCodeGenerator _qrCodeGenerator;
+    private readonly ILocalNetworkAddressProvider _addressProvider;
     private readonly System.Windows.Threading.DispatcherTimer _pairingTimer;
     private string _status = "Starting";
     private string _serverSummary = "Stopped";
@@ -33,6 +32,8 @@ public sealed class MainViewModel : ObservableObject
     private string _discoveryInstanceName = "-";
     private string _discoveryServiceType = "_devicesync._tcp";
     private string _discoveryPublishedPort = "-";
+    private string _advertisedAddress = "-";
+    private string _tcpEndpoint = "-";
     private string _discoveryLastError = "-";
     private string _discoveryLastPublishedAtUtc = "-";
     private string _pairingState = "Disabled";
@@ -40,6 +41,7 @@ public sealed class MainViewModel : ObservableObject
     private string _pairingDeviceName = "-";
     private string _pairingVerificationCode = "-";
     private ImageSource? _pairingQrImage;
+    private byte[]? _pairingQrPng;
     private bool _isPairingVisible;
 
     public MainViewModel(
@@ -49,6 +51,7 @@ public sealed class MainViewModel : ObservableObject
         IPairingSessionManager pairingSessionManager,
         ITrustedDeviceRepository trustedDeviceRepository,
         IQrCodeGenerator qrCodeGenerator,
+        ILocalNetworkAddressProvider addressProvider,
         IWindowsDeviceIdentityProvider identityProvider)
     {
         _server = server;
@@ -57,6 +60,7 @@ public sealed class MainViewModel : ObservableObject
         _pairingSessionManager = pairingSessionManager;
         _trustedDeviceRepository = trustedDeviceRepository;
         _qrCodeGenerator = qrCodeGenerator;
+        _addressProvider = addressProvider;
         _identityProvider = identityProvider;
         StartCommand = new AsyncRelayCommand(StartAsync);
         StopCommand = new AsyncRelayCommand(StopAsync);
@@ -68,6 +72,7 @@ public sealed class MainViewModel : ObservableObject
         ConfirmPairingCodeCommand = new AsyncRelayCommand(ConfirmPairingCodeAsync);
         RejectPairingCodeCommand = new AsyncRelayCommand(RejectPairingCodeAsync);
         RevokeTrustedPhoneCommand = new AsyncRelayCommand<string>(RevokeTrustedPhoneAsync);
+        SavePairingQrCommand = new AsyncRelayCommand(SavePairingQrAsync);
 
         _server.StateChanged += OnServerStateChanged;
         _server.SessionChanged += OnSessionChanged;
@@ -92,6 +97,7 @@ public sealed class MainViewModel : ObservableObject
     public ICommand ConfirmPairingCodeCommand { get; }
     public ICommand RejectPairingCodeCommand { get; }
     public ICommand RevokeTrustedPhoneCommand { get; }
+    public ICommand SavePairingQrCommand { get; }
     public ObservableCollection<TrustedPhoneViewModel> TrustedPhones { get; } = [];
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string ServerSummary { get => _serverSummary; private set => SetProperty(ref _serverSummary, value); }
@@ -105,6 +111,8 @@ public sealed class MainViewModel : ObservableObject
     public string DiscoveryInstanceName { get => _discoveryInstanceName; private set => SetProperty(ref _discoveryInstanceName, value); }
     public string DiscoveryServiceType { get => _discoveryServiceType; private set => SetProperty(ref _discoveryServiceType, value); }
     public string DiscoveryPublishedPort { get => _discoveryPublishedPort; private set => SetProperty(ref _discoveryPublishedPort, value); }
+    public string AdvertisedAddress { get => _advertisedAddress; private set => SetProperty(ref _advertisedAddress, value); }
+    public string TcpEndpoint { get => _tcpEndpoint; private set => SetProperty(ref _tcpEndpoint, value); }
     public string DiscoveryLastError { get => _discoveryLastError; private set => SetProperty(ref _discoveryLastError, value); }
     public string DiscoveryLastPublishedAtUtc { get => _discoveryLastPublishedAtUtc; private set => SetProperty(ref _discoveryLastPublishedAtUtc, value); }
     public string PairingState { get => _pairingState; private set => SetProperty(ref _pairingState, value); }
@@ -113,12 +121,18 @@ public sealed class MainViewModel : ObservableObject
     public string PairingVerificationCode { get => _pairingVerificationCode; private set => SetProperty(ref _pairingVerificationCode, value); }
     public ImageSource? PairingQrImage { get => _pairingQrImage; private set => SetProperty(ref _pairingQrImage, value); }
     public bool IsPairingVisible { get => _isPairingVisible; private set => SetProperty(ref _isPairingVisible, value); }
+#if DEBUG
+    public bool IsDebugBuild => true;
+#else
+    public bool IsDebugBuild => false;
+#endif
 
     private async Task LoadIdentityAsync()
     {
         WindowsDeviceId = await _identityProvider.GetOrCreateDeviceIdAsync();
         var settings = await _identityProvider.GetSettingsAsync();
         Port = settings.Port;
+        UpdateNetworkDiagnostics(_addressProvider.GetPrimaryLocalIPv4Address(), settings.Port);
     }
 
     private async Task StartAsync()
@@ -173,9 +187,22 @@ public sealed class MainViewModel : ObservableObject
             await _server.StartAsync();
         }
 
-        var payload = await _pairingSessionManager.StartPairingAsync(_server.Port, GetLocalIPv4Addresses());
+        var hostAddresses = _addressProvider.GetLocalIPv4Addresses();
+        if (hostAddresses.Count == 0)
+        {
+            Status = "Не найден адрес локальной сети";
+            PairingQrImage = null;
+            _pairingQrPng = null;
+            IsPairingVisible = false;
+            UpdateNetworkDiagnostics(null, _server.Port);
+            return;
+        }
+
+        UpdateNetworkDiagnostics(hostAddresses[0], _server.Port);
+        var payload = await _pairingSessionManager.StartPairingAsync(_server.Port, hostAddresses);
         var content = JsonSerializer.Serialize(payload, ProtocolSerializerOptions.CamelCase);
-        PairingQrImage = PngToImageSource(_qrCodeGenerator.GeneratePng(content, 8));
+        _pairingQrPng = _qrCodeGenerator.GeneratePng(content, 4);
+        PairingQrImage = PngToImageSource(_pairingQrPng);
         PairingDeviceName = payload.WindowsDeviceName;
         PairingVerificationCode = "-";
         IsPairingVisible = true;
@@ -189,6 +216,7 @@ public sealed class MainViewModel : ObservableObject
     {
         await _pairingSessionManager.CancelAsync();
         PairingQrImage = null;
+        _pairingQrPng = null;
         IsPairingVisible = false;
         _pairingTimer.Stop();
         await _discoveryControl.RestartDiscoveryAsync();
@@ -250,6 +278,7 @@ public sealed class MainViewModel : ObservableObject
             DiscoveryInstanceName = e.Service?.InstanceName ?? "-";
             DiscoveryServiceType = e.Service?.ServiceType ?? "_devicesync._tcp";
             DiscoveryPublishedPort = e.Service?.Port.ToString() ?? "-";
+            UpdateNetworkDiagnostics(e.Service?.AdvertisedAddress ?? _addressProvider.GetPrimaryLocalIPv4Address(), e.Service?.Port ?? Port);
             DiscoveryLastError = e.LastError ?? "-";
             DiscoveryLastPublishedAtUtc = e.LastPublishedAtUtc?.ToString("O") ?? "-";
         });
@@ -311,6 +340,23 @@ public sealed class MainViewModel : ObservableObject
         return bitmap;
     }
 
+    private async Task SavePairingQrAsync()
+    {
+#if DEBUG
+        if (_pairingQrPng is null)
+        {
+            Status = "No QR image to save.";
+            return;
+        }
+
+        var path = Path.Combine(Path.GetTempPath(), $"devicesync-pairing-qr-{DateTimeOffset.UtcNow:yyyyMMddHHmmss}.png");
+        await File.WriteAllBytesAsync(path, _pairingQrPng);
+        Status = $"QR saved to {path}";
+#else
+        await Task.CompletedTask;
+#endif
+    }
+
     private static string FormatVerificationCode(string? code)
     {
         if (string.IsNullOrWhiteSpace(code))
@@ -322,16 +368,10 @@ public sealed class MainViewModel : ObservableObject
         return $"{padded[..3]} {padded[3..]}";
     }
 
-    private static IReadOnlyList<string> GetLocalIPv4Addresses()
+    private void UpdateNetworkDiagnostics(string? address, int port)
     {
-        return NetworkInterface.GetAllNetworkInterfaces()
-            .Where(adapter => adapter.OperationalStatus == OperationalStatus.Up)
-            .SelectMany(adapter => adapter.GetIPProperties().UnicastAddresses)
-            .Select(address => address.Address)
-            .Where(address => address.AddressFamily == AddressFamily.InterNetwork && !System.Net.IPAddress.IsLoopback(address))
-            .Select(address => address.ToString())
-            .Distinct()
-            .ToList();
+        AdvertisedAddress = string.IsNullOrWhiteSpace(address) ? "-" : address;
+        TcpEndpoint = string.IsNullOrWhiteSpace(address) ? "-" : $"{address}:{port}";
     }
 
     private static class ProtocolSerializerOptions
