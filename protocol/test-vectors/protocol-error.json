@@ -1,0 +1,14 @@
+{
+  "protocolVersion": 1,
+  "messageId": "error-1",
+  "type": "error.protocol",
+  "senderDeviceId": "windows-test-device",
+  "recipientDeviceId": "android-test-device",
+  "timestampUtc": "2026-07-05T18:45:05Z",
+  "requiresAcknowledgement": false,
+  "payload": {
+    "code": "invalid_message",
+    "message": "The message is invalid.",
+    "fatal": true
+  }
+}

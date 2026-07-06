@@ -1,0 +1,13 @@
+{
+  "protocolVersion": 1,
+  "messageId": "close-1",
+  "type": "connection.close",
+  "senderDeviceId": "android-test-device",
+  "recipientDeviceId": "windows-test-device",
+  "timestampUtc": "2026-07-05T18:45:04Z",
+  "requiresAcknowledgement": false,
+  "payload": {
+    "reason": "user_requested",
+    "allowReconnect": true
+  }
+}

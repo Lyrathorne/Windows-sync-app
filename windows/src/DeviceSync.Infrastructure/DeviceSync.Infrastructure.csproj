@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\DeviceSync.Application\DeviceSync.Application.csproj" />
+    <ProjectReference Include="..\DeviceSync.Protocol\DeviceSync.Protocol.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+</Project>

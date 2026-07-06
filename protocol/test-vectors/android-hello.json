@@ -1,0 +1,15 @@
+{
+  "protocolVersion": 1,
+  "messageId": "hello-1",
+  "type": "connection.hello",
+  "senderDeviceId": "android-test-device",
+  "timestampUtc": "2026-07-05T18:45:00Z",
+  "requiresAcknowledgement": true,
+  "payload": {
+    "deviceName": "Pixel",
+    "deviceType": "android",
+    "appVersion": "1.0",
+    "protocolVersion": 1,
+    "capabilities": ["heartbeat-v1", "ack-v1", "reconnect-v1"]
+  }
+}

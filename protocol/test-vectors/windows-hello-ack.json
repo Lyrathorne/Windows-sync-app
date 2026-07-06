@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "messageId": "ack-1",
+  "type": "connection.hello_ack",
+  "senderDeviceId": "windows-test-device",
+  "recipientDeviceId": "android-test-device",
+  "timestampUtc": "2026-07-05T18:45:01Z",
+  "correlationId": "hello-1",
+  "requiresAcknowledgement": false,
+  "payload": {
+    "deviceName": "Windows PC",
+    "deviceType": "windows",
+    "acceptedProtocolVersion": 1,
+    "capabilities": ["heartbeat-v1", "ack-v1", "reconnect-v1"]
+  }
+}

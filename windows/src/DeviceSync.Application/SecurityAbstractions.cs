@@ -1,0 +1,22 @@
+namespace DeviceSync.Application;
+
+public interface IDeviceIdentityKeyProvider
+{
+    Task<byte[]> GetPublicKeyAsync(CancellationToken cancellationToken = default);
+    Task<string> GetPublicKeyFingerprintAsync(CancellationToken cancellationToken = default);
+    Task<byte[]> SignAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default);
+    bool Verify(ReadOnlySpan<byte> publicKey, ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature);
+}
+
+public interface IProtectedKeyStorage
+{
+    Task<byte[]?> ReadProtectedAsync(CancellationToken cancellationToken = default);
+    Task WriteProtectedAtomicAsync(byte[] protectedBytes, CancellationToken cancellationToken = default);
+    Task DeleteAsync(CancellationToken cancellationToken = default);
+}
+
+public interface IDataProtector
+{
+    byte[] Protect(byte[] plainBytes);
+    byte[] Unprotect(byte[] protectedBytes);
+}

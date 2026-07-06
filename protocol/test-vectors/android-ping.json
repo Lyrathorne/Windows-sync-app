@@ -1,0 +1,13 @@
+{
+  "protocolVersion": 1,
+  "messageId": "ping-1",
+  "type": "connection.ping",
+  "senderDeviceId": "android-test-device",
+  "recipientDeviceId": "windows-test-device",
+  "timestampUtc": "2026-07-05T18:45:02Z",
+  "requiresAcknowledgement": false,
+  "payload": {
+    "sequence": 1,
+    "sentAtUtc": "2026-07-05T18:45:02Z"
+  }
+}

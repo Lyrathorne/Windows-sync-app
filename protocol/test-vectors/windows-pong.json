@@ -1,0 +1,14 @@
+{
+  "protocolVersion": 1,
+  "messageId": "pong-1",
+  "type": "connection.pong",
+  "senderDeviceId": "windows-test-device",
+  "recipientDeviceId": "android-test-device",
+  "timestampUtc": "2026-07-05T18:45:03Z",
+  "correlationId": "ping-1",
+  "requiresAcknowledgement": false,
+  "payload": {
+    "sequence": 1,
+    "receivedAtUtc": "2026-07-05T18:45:03Z"
+  }
+}
