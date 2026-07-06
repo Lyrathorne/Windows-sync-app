@@ -88,16 +88,22 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="8" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
                 <TextBlock Text="Adding phone" FontWeight="SemiBold" />
                 <TextBlock Grid.Column="1" Text="{Binding PairingState}" />
-                <Image Grid.Column="2" Grid.RowSpan="7" Source="{Binding PairingQrImage}" Width="160" Height="160" Stretch="Uniform" />
+                <Image Grid.Column="2" Grid.RowSpan="9" Source="{Binding PairingQrImage}" Width="160" Height="160" Stretch="Uniform" />
                 <TextBlock Grid.Row="2" Text="Windows name" FontWeight="SemiBold" />
                 <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding PairingDeviceName}" />
                 <TextBlock Grid.Row="4" Text="Time remaining" FontWeight="SemiBold" />
                 <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding PairingTimeRemaining}" />
                 <TextBlock Grid.Row="6" Text="Verification code" FontWeight="SemiBold" />
                 <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding PairingVerificationCode}" FontSize="18" FontWeight="SemiBold" />
+                <StackPanel Grid.Row="8" Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="Matches" Width="88" Margin="0,0,8,0" Command="{Binding ConfirmPairingCodeCommand}" />
+                    <Button Content="Does not match" Width="120" Command="{Binding RejectPairingCodeCommand}" />
+                </StackPanel>
             </Grid>
         </Border>
 
@@ -109,7 +115,8 @@
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
                 <TextBlock Text="Connected Android Device" FontSize="18" FontWeight="SemiBold" />
-                <Grid Grid.Row="2">
+                <StackPanel Grid.Row="2">
+                <Grid>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="160" />
                         <ColumnDefinition Width="*" />
@@ -132,6 +139,34 @@
                     <TextBlock Grid.Row="6" Text="Connected at" FontWeight="SemiBold" />
                     <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding ConnectedAtUtc}" />
                 </Grid>
+                <TextBlock Text="Trusted phones" FontSize="16" FontWeight="SemiBold" Margin="0,16,0,8" />
+                <ItemsControl ItemsSource="{Binding TrustedPhones}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Border BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,8">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="120" />
+                                    </Grid.ColumnDefinitions>
+                                    <StackPanel>
+                                        <TextBlock Text="{Binding DeviceName}" FontWeight="SemiBold" />
+                                        <TextBlock Text="{Binding DeviceId}" TextWrapping="Wrap" />
+                                        <TextBlock Text="{Binding Fingerprint}" />
+                                        <TextBlock Text="{Binding PairedAtUtc}" />
+                                        <TextBlock Text="{Binding LastVerifiedAtUtc}" />
+                                        <TextBlock Text="{Binding TrustStatus}" />
+                                    </StackPanel>
+                                    <Button Grid.Column="1"
+                                            Content="Remove trust"
+                                            Command="{Binding DataContext.RevokeTrustedPhoneCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                            CommandParameter="{Binding DeviceId}" />
+                                </Grid>
+                            </Border>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                </StackPanel>
             </Grid>
         </Border>
 

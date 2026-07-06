@@ -10,6 +10,9 @@ namespace DeviceSync.Infrastructure;
 public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
 {
     private readonly IWindowsDeviceIdentityProvider _identityProvider;
+    private readonly IPairingSessionManager? _pairingSessionManager;
+    private readonly IDeviceIdentityKeyProvider? _keyProvider;
+    private readonly ITrustedDeviceRepository? _trustedDeviceRepository;
     private readonly DeviceSessionRegistry _registry;
     private readonly ILogger<TcpDeviceServer> _logger;
     private readonly object _gate = new();
@@ -21,9 +24,15 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
     public TcpDeviceServer(
         IWindowsDeviceIdentityProvider identityProvider,
         DeviceSessionRegistry registry,
+        IPairingSessionManager? pairingSessionManager = null,
+        IDeviceIdentityKeyProvider? keyProvider = null,
+        ITrustedDeviceRepository? trustedDeviceRepository = null,
         ILogger<TcpDeviceServer>? logger = null)
     {
         _identityProvider = identityProvider;
+        _pairingSessionManager = pairingSessionManager;
+        _keyProvider = keyProvider;
+        _trustedDeviceRepository = trustedDeviceRepository;
         _registry = registry;
         _logger = logger ?? NullLogger<TcpDeviceServer>.Instance;
     }
@@ -123,6 +132,8 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
         var session = new ClientSession(
             client,
             new ConnectionHandshakeHandler(_identityProvider),
+            CreateAuthHandshakeHandler(),
+            CreatePairingRequestHandler(),
             new HeartbeatResponder(_identityProvider),
             _registry,
             _logger);
@@ -152,6 +163,26 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
                 _activeClientSession = null;
             }
         }
+    }
+
+    private PairingRequestHandler? CreatePairingRequestHandler()
+    {
+        if (_pairingSessionManager is null || _keyProvider is null || _trustedDeviceRepository is null)
+        {
+            return null;
+        }
+
+        return new PairingRequestHandler(_pairingSessionManager, _identityProvider, _keyProvider, _trustedDeviceRepository);
+    }
+
+    private AuthHandshakeHandler? CreateAuthHandshakeHandler()
+    {
+        if (_keyProvider is null || _trustedDeviceRepository is null)
+        {
+            return null;
+        }
+
+        return new AuthHandshakeHandler(_identityProvider, _keyProvider, _trustedDeviceRepository);
     }
 
     public async ValueTask DisposeAsync()

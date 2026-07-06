@@ -28,7 +28,7 @@ public sealed class FileTrustedDeviceRepository : ITrustedDeviceRepository
         try
         {
             return (await ReadAllCoreAsync(cancellationToken).ConfigureAwait(false))
-                .Where(device => device.RevokedAtUtc is null)
+                .Where(device => device.RevokedAtUtc is null && device.TrustStatus != TrustStatuses.Revoked)
                 .ToList();
         }
         finally
@@ -43,7 +43,7 @@ public sealed class FileTrustedDeviceRepository : ITrustedDeviceRepository
         try
         {
             return (await ReadAllCoreAsync(cancellationToken).ConfigureAwait(false))
-                .FirstOrDefault(device => device.DeviceId == deviceId && device.RevokedAtUtc is null);
+                .FirstOrDefault(device => device.DeviceId == deviceId);
         }
         finally
         {
@@ -84,13 +84,29 @@ public sealed class FileTrustedDeviceRepository : ITrustedDeviceRepository
         }
     }
 
+    public async Task ActivateTrustedDeviceAsync(string deviceId, CancellationToken cancellationToken = default)
+    {
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            var devices = (await ReadAllCoreAsync(cancellationToken).ConfigureAwait(false))
+                .Select(device => device.DeviceId == deviceId ? device with { TrustStatus = TrustStatuses.Active } : device)
+                .ToList();
+            await WriteAllCoreAsync(devices, cancellationToken).ConfigureAwait(false);
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public async Task RevokeAsync(string deviceId, DateTimeOffset timestamp, CancellationToken cancellationToken = default)
     {
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
             var devices = (await ReadAllCoreAsync(cancellationToken).ConfigureAwait(false))
-                .Select(device => device.DeviceId == deviceId ? device with { RevokedAtUtc = timestamp } : device)
+                .Select(device => device.DeviceId == deviceId ? device with { RevokedAtUtc = timestamp, TrustStatus = TrustStatuses.Revoked } : device)
                 .ToList();
             await WriteAllCoreAsync(devices, cancellationToken).ConfigureAwait(false);
         }

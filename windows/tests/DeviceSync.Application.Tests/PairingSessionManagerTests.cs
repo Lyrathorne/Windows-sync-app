@@ -20,7 +20,7 @@ public sealed class PairingSessionManagerTests
     }
 
     [Fact]
-    public async Task Proof_CanBeConsumedOnlyOnce()
+    public async Task Proof_DoesNotConsumeSessionBeforeCompleteAck()
     {
         var manager = Manager();
         var qr = await manager.StartPairingAsync(54321, ["192.168.1.25"]);
@@ -34,7 +34,9 @@ public sealed class PairingSessionManagerTests
         var proof = SecurityEncoding.HmacSha256(manager.CurrentSession!.PairingSecret, transcript);
 
         Assert.NotNull(manager.ConsumeIfProofValid(qr.SessionId, proof, transcript));
-        Assert.Null(manager.ConsumeIfProofValid(qr.SessionId, proof, transcript));
+        Assert.False(manager.CurrentSession!.IsConsumed);
+        manager.CompletePairing(qr.SessionId);
+        Assert.Null(manager.CurrentSession);
     }
 
     [Fact]

@@ -6,7 +6,9 @@ public enum PairingState
     Starting,
     WaitingForDevice,
     ProofVerified,
+    ChallengeSent,
     WaitingForUserConfirmation,
+    WaitingForCompleteAck,
     Completing,
     Completed,
     Expired,
@@ -23,6 +25,17 @@ public sealed record PairingSession
     public required DateTimeOffset ExpiresAtUtc { get; init; }
     public int FailedAttemptCount { get; init; }
     public bool IsConsumed { get; init; }
+    public bool RequestHmacVerified { get; init; }
+    public bool ChallengeSent { get; init; }
+    public bool LocalUserConfirmed { get; init; }
+    public bool RemoteAndroidConfirmed { get; init; }
+    public bool AndroidSignatureVerified { get; init; }
+    public string? AndroidDeviceId { get; init; }
+    public string? AndroidDeviceName { get; init; }
+    public string? AndroidIdentityPublicKey { get; init; }
+    public string? AndroidIdentityFingerprint { get; init; }
+    public string? AndroidNonce { get; init; }
+    public string? VerificationCode { get; init; }
 }
 
 public sealed record PairingQrPayload

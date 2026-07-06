@@ -79,6 +79,64 @@ Fields:
 
 The verification code is six digits derived from SHA-256 of the challenge transcript. Leading zeros are preserved.
 
+## Pairing Confirmation Transcript
+
+Android signs this transcript after the user confirms the six digit code:
+
+`DeviceSyncPairingConfirmV1`
+`sessionId`
+`windowsDeviceId`
+`androidDeviceId`
+`windowsIdentityFingerprint`
+`androidIdentityFingerprint`
+`androidNonce`
+`windowsNonce`
+`verificationCode`
+
+The `pairing.confirm` payload contains:
+
+```json
+{
+  "sessionId": "...",
+  "confirmed": true,
+  "androidSignature": "base64url"
+}
+```
+
+## Pairing Accepted Transcript
+
+Windows signs this transcript only after both local and remote confirmations are present:
+
+`DeviceSyncPairingAcceptedV1`
+`sessionId`
+`windowsDeviceId`
+`androidDeviceId`
+`windowsIdentityFingerprint`
+`androidIdentityFingerprint`
+`androidNonce`
+`windowsNonce`
+`verificationCode`
+`pairedAtUtc`
+`permissionsCsv`
+
+The only permissions granted by Pairing V1 are:
+
+```text
+basic_connection
+heartbeat
+```
+
+The `pairing.accepted` payload contains:
+
+```json
+{
+  "sessionId": "...",
+  "windowsSignature": "base64url",
+  "pairedAtUtc": "...",
+  "permissions": ["basic_connection", "heartbeat"]
+}
+```
+
 ## Trust
 
 Trusted records are saved only after:
@@ -90,3 +148,27 @@ Trusted records are saved only after:
 5. `pairing.accepted` is sent.
 
 Discovery TXT fingerprints are only hints. They do not replace QR or trust-store verification.
+## Runtime TCP Flow
+
+Pairing uses the normal DeviceSync TCP framing, but it is a separate short-lived session. It does not send `connection.hello`, does not start heartbeat, and does not register an authenticated device session.
+
+```text
+Android -> Windows: pairing.request
+Windows -> Android: pairing.challenge
+Android -> Windows: pairing.confirm
+Windows -> Android: pairing.accepted
+Android -> Windows: pairing.complete_ack
+```
+
+`pairing.request` and `pairing.challenge` use HMAC-SHA256 over canonical transcripts, not serialized JSON. The verification code is derived independently on both platforms and is never sent over TCP.
+
+`pairing.complete_ack` is reserved for the durable trust commit step:
+
+```json
+{
+  "sessionId": "...",
+  "status": "stored"
+}
+```
+
+Windows must not treat a pending trust record as active until this acknowledgement is received.

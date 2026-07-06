@@ -86,6 +86,76 @@ public static class TranscriptBuilder
             windowsNonce);
     }
 
+    public static byte[] PairingConfirmation(
+        string sessionId,
+        string windowsDeviceId,
+        string androidDeviceId,
+        string windowsFingerprint,
+        string androidFingerprint,
+        string androidNonce,
+        string windowsNonce,
+        string verificationCode)
+    {
+        return Build(
+            "DeviceSyncPairingConfirmV1",
+            sessionId,
+            windowsDeviceId,
+            androidDeviceId,
+            windowsFingerprint,
+            androidFingerprint,
+            androidNonce,
+            windowsNonce,
+            verificationCode);
+    }
+
+    public static byte[] PairingAccepted(
+        string sessionId,
+        string windowsDeviceId,
+        string androidDeviceId,
+        string windowsFingerprint,
+        string androidFingerprint,
+        string androidNonce,
+        string windowsNonce,
+        string verificationCode,
+        string pairedAtUtc,
+        IReadOnlyList<string> permissions)
+    {
+        return Build(
+            "DeviceSyncPairingAcceptedV1",
+            sessionId,
+            windowsDeviceId,
+            androidDeviceId,
+            windowsFingerprint,
+            androidFingerprint,
+            androidNonce,
+            windowsNonce,
+            verificationCode,
+            pairedAtUtc,
+            string.Join(',', permissions));
+    }
+
+    public static byte[] SessionAuth(
+        int protocolVersion,
+        string androidDeviceId,
+        string windowsDeviceId,
+        string androidFingerprint,
+        string windowsFingerprint,
+        string clientNonce,
+        string serverNonce,
+        string helloMessageId)
+    {
+        return Build(
+            "DeviceSyncSessionAuthV1",
+            protocolVersion.ToString(),
+            androidDeviceId,
+            windowsDeviceId,
+            androidFingerprint,
+            windowsFingerprint,
+            clientNonce,
+            serverNonce,
+            helloMessageId);
+    }
+
     public static byte[] Build(params string[] fields)
     {
         using var stream = new MemoryStream();

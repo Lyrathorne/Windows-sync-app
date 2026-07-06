@@ -15,6 +15,7 @@ public static class ProtocolMessageTypes
     public const string PairingAccepted = "pairing.accepted";
     public const string PairingRejected = "pairing.rejected";
     public const string PairingCancel = "pairing.cancel";
+    public const string PairingCompleteAck = "pairing.complete_ack";
     public const string AuthChallenge = "auth.challenge";
     public const string AuthResponse = "auth.response";
     public const string AuthAccepted = "auth.accepted";

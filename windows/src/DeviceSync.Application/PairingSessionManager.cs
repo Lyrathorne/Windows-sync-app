@@ -105,10 +105,106 @@ public sealed class PairingSessionManager : IPairingSessionManager
                 return null;
             }
 
-            var consumed = session with { IsConsumed = true };
+            var consumed = session with { RequestHmacVerified = true };
             CurrentSession = consumed;
             SetState(PairingState.ProofVerified);
             return consumed;
+        }
+    }
+
+    public void MarkChallengeSent(
+        string sessionId,
+        string androidDeviceId,
+        string androidDeviceName,
+        string androidPublicKey,
+        string androidFingerprint,
+        string androidNonce,
+        string verificationCode)
+    {
+        lock (_gate)
+        {
+            if (CurrentSession is null || CurrentSession.SessionId != sessionId || CurrentSession.IsConsumed)
+            {
+                return;
+            }
+
+            CurrentSession = CurrentSession with
+            {
+                ChallengeSent = true,
+                AndroidDeviceId = androidDeviceId,
+                AndroidDeviceName = androidDeviceName,
+                AndroidIdentityPublicKey = androidPublicKey,
+                AndroidIdentityFingerprint = androidFingerprint,
+                AndroidNonce = androidNonce,
+                VerificationCode = verificationCode,
+            };
+            SetState(PairingState.WaitingForUserConfirmation);
+        }
+    }
+
+    public void ConfirmLocalUser()
+    {
+        lock (_gate)
+        {
+            if (CurrentSession is null || CurrentSession.IsConsumed || DateTimeOffset.UtcNow > CurrentSession.ExpiresAtUtc)
+            {
+                return;
+            }
+
+            CurrentSession = CurrentSession with { LocalUserConfirmed = true };
+            SetState(IsReadyForAccepted(CurrentSession.SessionId) ? PairingState.Completing : PairingState.WaitingForUserConfirmation);
+        }
+    }
+
+    public void ConfirmRemoteAndroid(string sessionId)
+    {
+        lock (_gate)
+        {
+            if (CurrentSession is null || CurrentSession.SessionId != sessionId || CurrentSession.IsConsumed)
+            {
+                return;
+            }
+
+            CurrentSession = CurrentSession with
+            {
+                RemoteAndroidConfirmed = true,
+                AndroidSignatureVerified = true,
+            };
+            SetState(IsReadyForAccepted(sessionId) ? PairingState.Completing : PairingState.WaitingForUserConfirmation);
+        }
+    }
+
+    public bool IsReadyForAccepted(string sessionId)
+    {
+        lock (_gate)
+        {
+            var session = CurrentSession;
+            return session is not null &&
+                session.SessionId == sessionId &&
+                session.RequestHmacVerified &&
+                session.ChallengeSent &&
+                session.LocalUserConfirmed &&
+                session.RemoteAndroidConfirmed &&
+                session.AndroidSignatureVerified &&
+                !session.IsConsumed &&
+                DateTimeOffset.UtcNow <= session.ExpiresAtUtc;
+        }
+    }
+
+    public void CompletePairing(string sessionId)
+    {
+        lock (_gate)
+        {
+            if (CurrentSession is null || CurrentSession.SessionId != sessionId)
+            {
+                return;
+            }
+
+            CurrentSession = CurrentSession with { IsConsumed = true };
+            ClearSecret(CurrentSession);
+            CurrentSession = null;
+            CurrentQrPayload = null;
+            SetState(PairingState.Completed);
         }
     }
 

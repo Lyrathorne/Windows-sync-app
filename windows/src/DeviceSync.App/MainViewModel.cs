@@ -2,6 +2,7 @@ using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Collections.ObjectModel;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text.Json;
@@ -17,6 +18,7 @@ public sealed class MainViewModel : ObservableObject
     private readonly IDiscoveryControl _discoveryControl;
     private readonly IWindowsDeviceIdentityProvider _identityProvider;
     private readonly IPairingSessionManager _pairingSessionManager;
+    private readonly ITrustedDeviceRepository _trustedDeviceRepository;
     private readonly IQrCodeGenerator _qrCodeGenerator;
     private readonly System.Windows.Threading.DispatcherTimer _pairingTimer;
     private string _status = "Starting";
@@ -45,6 +47,7 @@ public sealed class MainViewModel : ObservableObject
         IServiceDiscoveryPublisher publisher,
         IDiscoveryControl discoveryControl,
         IPairingSessionManager pairingSessionManager,
+        ITrustedDeviceRepository trustedDeviceRepository,
         IQrCodeGenerator qrCodeGenerator,
         IWindowsDeviceIdentityProvider identityProvider)
     {
@@ -52,6 +55,7 @@ public sealed class MainViewModel : ObservableObject
         _publisher = publisher;
         _discoveryControl = discoveryControl;
         _pairingSessionManager = pairingSessionManager;
+        _trustedDeviceRepository = trustedDeviceRepository;
         _qrCodeGenerator = qrCodeGenerator;
         _identityProvider = identityProvider;
         StartCommand = new AsyncRelayCommand(StartAsync);
@@ -63,6 +67,7 @@ public sealed class MainViewModel : ObservableObject
         NewPairingCodeCommand = new AsyncRelayCommand(StartPairingAsync);
         ConfirmPairingCodeCommand = new AsyncRelayCommand(ConfirmPairingCodeAsync);
         RejectPairingCodeCommand = new AsyncRelayCommand(RejectPairingCodeAsync);
+        RevokeTrustedPhoneCommand = new AsyncRelayCommand<string>(RevokeTrustedPhoneAsync);
 
         _server.StateChanged += OnServerStateChanged;
         _server.SessionChanged += OnSessionChanged;
@@ -74,6 +79,7 @@ public sealed class MainViewModel : ObservableObject
         };
         _pairingTimer.Tick += (_, _) => UpdatePairingTimer();
         _ = LoadIdentityAsync();
+        _ = LoadTrustedPhonesAsync();
     }
 
     public ICommand StartCommand { get; }
@@ -85,6 +91,8 @@ public sealed class MainViewModel : ObservableObject
     public ICommand NewPairingCodeCommand { get; }
     public ICommand ConfirmPairingCodeCommand { get; }
     public ICommand RejectPairingCodeCommand { get; }
+    public ICommand RevokeTrustedPhoneCommand { get; }
+    public ObservableCollection<TrustedPhoneViewModel> TrustedPhones { get; } = [];
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string ServerSummary { get => _serverSummary; private set => SetProperty(ref _serverSummary, value); }
     public string WindowsDeviceId { get => _windowsDeviceId; private set => SetProperty(ref _windowsDeviceId, value); }
@@ -128,9 +136,34 @@ public sealed class MainViewModel : ObservableObject
         await _server.DisconnectActiveSessionAsync();
     }
 
+    private async Task LoadTrustedPhonesAsync()
+    {
+        var devices = await _trustedDeviceRepository.GetTrustedDevicesAsync();
+        Dispatch(() =>
+        {
+            TrustedPhones.Clear();
+            foreach (var device in devices)
+            {
+                TrustedPhones.Add(TrustedPhoneViewModel.From(device));
+            }
+        });
+    }
+
+    private async Task RevokeTrustedPhoneAsync(string deviceId)
+    {
+        if (ConnectedDeviceId == deviceId)
+        {
+            await _server.DisconnectActiveSessionAsync();
+        }
+        await _trustedDeviceRepository.RevokeAsync(deviceId, DateTimeOffset.UtcNow);
+        await LoadTrustedPhonesAsync();
+        Status = "Phone trust removed. New QR pairing is required.";
+    }
+
     private async Task RestartDiscoveryAsync()
     {
         await _discoveryControl.RestartDiscoveryAsync();
+        await LoadTrustedPhonesAsync();
     }
 
     private async Task StartPairingAsync()
@@ -163,7 +196,8 @@ public sealed class MainViewModel : ObservableObject
 
     private Task ConfirmPairingCodeAsync()
     {
-        PairingState = "Local confirmation received; waiting for remote confirmation";
+        _pairingSessionManager.ConfirmLocalUser();
+        UpdatePairingState();
         return Task.CompletedTask;
     }
 
@@ -229,6 +263,14 @@ public sealed class MainViewModel : ObservableObject
     private void UpdatePairingState()
     {
         PairingState = _pairingSessionManager.State.ToString();
+        if (_pairingSessionManager.State == DeviceSync.Application.PairingState.Completed)
+        {
+            _ = LoadTrustedPhonesAsync();
+        }
+        if (!string.IsNullOrWhiteSpace(_pairingSessionManager.CurrentSession?.VerificationCode))
+        {
+            PairingVerificationCode = FormatVerificationCode(_pairingSessionManager.CurrentSession.VerificationCode);
+        }
         if (_pairingSessionManager.CurrentSession is null &&
             _pairingSessionManager.State is DeviceSync.Application.PairingState.Expired or DeviceSync.Application.PairingState.Disabled)
         {
@@ -269,6 +311,17 @@ public sealed class MainViewModel : ObservableObject
         return bitmap;
     }
 
+    private static string FormatVerificationCode(string? code)
+    {
+        if (string.IsNullOrWhiteSpace(code))
+        {
+            return "-";
+        }
+
+        var padded = code.PadLeft(6, '0');
+        return $"{padded[..3]} {padded[3..]}";
+    }
+
     private static IReadOnlyList<string> GetLocalIPv4Addresses()
     {
         return NetworkInterface.GetAllNetworkInterfaces()
@@ -300,5 +353,33 @@ public sealed class MainViewModel : ObservableObject
         }
 
         dispatcher.Invoke(action);
+    }
+}
+
+public sealed record TrustedPhoneViewModel
+{
+    public required string DeviceId { get; init; }
+    public required string DeviceName { get; init; }
+    public required string Fingerprint { get; init; }
+    public required string PairedAtUtc { get; init; }
+    public required string LastVerifiedAtUtc { get; init; }
+    public required string TrustStatus { get; init; }
+
+    public static TrustedPhoneViewModel From(TrustedDevice device)
+    {
+        return new TrustedPhoneViewModel
+        {
+            DeviceId = device.DeviceId,
+            DeviceName = device.DeviceName,
+            Fingerprint = Shorten(device.IdentityFingerprint),
+            PairedAtUtc = device.PairedAtUtc.ToString("O"),
+            LastVerifiedAtUtc = device.LastVerifiedAtUtc?.ToString("O") ?? "-",
+            TrustStatus = device.TrustStatus,
+        };
+    }
+
+    private static string Shorten(string value)
+    {
+        return value.Length <= 18 ? value : $"{value[..10]}...{value[^6..]}";
     }
 }

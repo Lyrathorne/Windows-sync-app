@@ -35,4 +35,9 @@ public interface IPairingSessionManager
     Task<PairingQrPayload> StartPairingAsync(int port, IReadOnlyList<string> hostAddresses, CancellationToken cancellationToken = default);
     Task CancelAsync(CancellationToken cancellationToken = default);
     PairingSession? ConsumeIfProofValid(string sessionId, byte[] proof, byte[] transcript);
+    void MarkChallengeSent(string sessionId, string androidDeviceId, string androidDeviceName, string androidPublicKey, string androidFingerprint, string androidNonce, string verificationCode);
+    void ConfirmLocalUser();
+    void ConfirmRemoteAndroid(string sessionId);
+    void CompletePairing(string sessionId);
+    bool IsReadyForAccepted(string sessionId);
 }
