@@ -43,6 +43,8 @@ public sealed class MainViewModel : ObservableObject
     private ImageSource? _pairingQrImage;
     private byte[]? _pairingQrPng;
     private bool _isPairingVisible;
+    private bool _isPairingConfirmationVisible;
+    private bool _isRetryStartVisible;
 
     public MainViewModel(
         IDeviceServer server,
@@ -121,6 +123,8 @@ public sealed class MainViewModel : ObservableObject
     public string PairingVerificationCode { get => _pairingVerificationCode; private set => SetProperty(ref _pairingVerificationCode, value); }
     public ImageSource? PairingQrImage { get => _pairingQrImage; private set => SetProperty(ref _pairingQrImage, value); }
     public bool IsPairingVisible { get => _isPairingVisible; private set => SetProperty(ref _isPairingVisible, value); }
+    public bool IsPairingConfirmationVisible { get => _isPairingConfirmationVisible; private set => SetProperty(ref _isPairingConfirmationVisible, value); }
+    public bool IsRetryStartVisible { get => _isRetryStartVisible; private set => SetProperty(ref _isRetryStartVisible, value); }
 #if DEBUG
     public bool IsDebugBuild => true;
 #else
@@ -137,6 +141,7 @@ public sealed class MainViewModel : ObservableObject
 
     private async Task StartAsync()
     {
+        Status = "Запуск сервера...";
         await _server.StartAsync();
     }
 
@@ -194,6 +199,7 @@ public sealed class MainViewModel : ObservableObject
             PairingQrImage = null;
             _pairingQrPng = null;
             IsPairingVisible = false;
+            IsPairingConfirmationVisible = false;
             UpdateNetworkDiagnostics(null, _server.Port);
             return;
         }
@@ -205,6 +211,7 @@ public sealed class MainViewModel : ObservableObject
         PairingQrImage = PngToImageSource(_pairingQrPng);
         PairingDeviceName = payload.WindowsDeviceName;
         PairingVerificationCode = "-";
+        IsPairingConfirmationVisible = false;
         IsPairingVisible = true;
         UpdatePairingState();
         UpdatePairingTimer();
@@ -218,6 +225,7 @@ public sealed class MainViewModel : ObservableObject
         PairingQrImage = null;
         _pairingQrPng = null;
         IsPairingVisible = false;
+        IsPairingConfirmationVisible = false;
         _pairingTimer.Stop();
         await _discoveryControl.RestartDiscoveryAsync();
     }
@@ -240,8 +248,9 @@ public sealed class MainViewModel : ObservableObject
         Dispatch(() =>
         {
             Port = e.Port;
-            ServerSummary = e.IsRunning ? $"Listening on TCP {e.Port}" : "Stopped";
-            Status = e.Status;
+            ServerSummary = e.IsRunning ? $"Listening on TCP {e.Port}" : "Ошибка запуска";
+            Status = e.IsRunning ? "Готово к подключению" : "Ошибка запуска";
+            IsRetryStartVisible = !e.IsRunning;
         });
     }
 
@@ -291,7 +300,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void UpdatePairingState()
     {
-        PairingState = _pairingSessionManager.State.ToString();
+        PairingState = PairingStateText(_pairingSessionManager.State);
         if (_pairingSessionManager.State == DeviceSync.Application.PairingState.Completed)
         {
             _ = LoadTrustedPhonesAsync();
@@ -299,6 +308,12 @@ public sealed class MainViewModel : ObservableObject
         if (!string.IsNullOrWhiteSpace(_pairingSessionManager.CurrentSession?.VerificationCode))
         {
             PairingVerificationCode = FormatVerificationCode(_pairingSessionManager.CurrentSession.VerificationCode);
+            IsPairingConfirmationVisible = true;
+        }
+        else if (_pairingSessionManager.CurrentSession is not null)
+        {
+            PairingVerificationCode = "-";
+            IsPairingConfirmationVisible = false;
         }
         if (_pairingSessionManager.CurrentSession is null &&
             _pairingSessionManager.State is DeviceSync.Application.PairingState.Expired or DeviceSync.Application.PairingState.Disabled)
@@ -366,6 +381,22 @@ public sealed class MainViewModel : ObservableObject
 
         var padded = code.PadLeft(6, '0');
         return $"{padded[..3]} {padded[3..]}";
+    }
+
+    private static string PairingStateText(DeviceSync.Application.PairingState state)
+    {
+        return state switch
+        {
+            DeviceSync.Application.PairingState.Starting => "Создание QR-кода...",
+            DeviceSync.Application.PairingState.WaitingForDevice => "Ожидание сканирования QR-кода...",
+            DeviceSync.Application.PairingState.ProofVerified => "Телефон найден. Проверка защищённого соединения...",
+            DeviceSync.Application.PairingState.WaitingForUserConfirmation => "Сравните код",
+            DeviceSync.Application.PairingState.Completing => "Завершение привязки...",
+            DeviceSync.Application.PairingState.Completed => "Привязка завершена",
+            DeviceSync.Application.PairingState.Expired => "QR-код устарел",
+            DeviceSync.Application.PairingState.Rejected => "Коды не совпали",
+            _ => state.ToString(),
+        };
     }
 
     private void UpdateNetworkDiagnostics(string? address, int port)
