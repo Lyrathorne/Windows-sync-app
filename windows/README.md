@@ -16,7 +16,13 @@ mDNS/DNS-SD is only for address discovery. It does not authenticate the computer
 
 ## Windows Firewall
 
-If Android can see the Windows computer but TCP connection times out, allow DeviceSync for private networks in Windows Firewall. Manual rule:
+If Android can see the Windows computer but TCP connection times out, first check whether Windows is listening:
+
+```powershell
+Get-NetTCPConnection -LocalPort 54321
+```
+
+Manual firewall rule for diagnostics:
 
 ```powershell
 New-NetFirewallRule `
@@ -25,5 +31,5 @@ New-NetFirewallRule `
   -Protocol TCP `
   -LocalPort 54321 `
   -Action Allow `
-  -Profile Private
+  -Profile Any
 ```

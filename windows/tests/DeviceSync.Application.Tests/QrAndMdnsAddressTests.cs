@@ -21,8 +21,8 @@ public sealed class QrAndMdnsAddressTests
         Assert.Equal(0x89, png[0]);
         Assert.Equal((byte)'P', png[1]);
         var (width, height) = ReadPngSize(png);
-        Assert.True(width >= 400, $"Expected QR width >= 400, got {width}.");
-        Assert.True(height >= 400, $"Expected QR height >= 400, got {height}.");
+        Assert.True(width >= 768, $"Expected QR width >= 768, got {width}.");
+        Assert.True(height >= 768, $"Expected QR height >= 768, got {height}.");
     }
 
     [Fact]

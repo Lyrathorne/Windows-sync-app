@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Net.NetworkInformation;
 using DeviceSync.Application;
 using DeviceSync.Infrastructure;
 using DeviceSync.Protocol;
@@ -40,6 +41,27 @@ public sealed class TcpDeviceServerIntegrationTests
             await writer.WriteAsync(AndroidClose());
             await Task.Delay(200);
             Assert.True(server.IsRunning);
+        }
+        finally
+        {
+            await server.StopAsync();
+        }
+    }
+
+    [Fact]
+    public async Task Listener_BindsToAnyIPv4Endpoint()
+    {
+        var port = GetFreePort();
+        var identity = new IntegrationIdentityProvider("windows-integration", port);
+        var server = new TcpDeviceServer(identity, new DeviceSessionRegistry());
+
+        await server.StartAsync();
+        try
+        {
+            var listeners = IPGlobalProperties.GetIPGlobalProperties().GetActiveTcpListeners();
+
+            Assert.Contains(listeners, endpoint =>
+                endpoint.Port == port && endpoint.Address.Equals(IPAddress.Any));
         }
         finally
         {

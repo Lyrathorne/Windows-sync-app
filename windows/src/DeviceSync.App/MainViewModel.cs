@@ -1,8 +1,10 @@
+using System.Collections.Generic;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
 using System.Text.Json;
 using System.IO;
 using DeviceSync.Application;
@@ -34,6 +36,7 @@ public sealed class MainViewModel : ObservableObject
     private string _discoveryPublishedPort = "-";
     private string _advertisedAddress = "-";
     private string _tcpEndpoint = "-";
+    private string _listeningEndpoint = "-";
     private string _discoveryLastError = "-";
     private string _discoveryLastPublishedAtUtc = "-";
     private string _pairingState = "Disabled";
@@ -115,6 +118,7 @@ public sealed class MainViewModel : ObservableObject
     public string DiscoveryPublishedPort { get => _discoveryPublishedPort; private set => SetProperty(ref _discoveryPublishedPort, value); }
     public string AdvertisedAddress { get => _advertisedAddress; private set => SetProperty(ref _advertisedAddress, value); }
     public string TcpEndpoint { get => _tcpEndpoint; private set => SetProperty(ref _tcpEndpoint, value); }
+    public string ListeningEndpoint { get => _listeningEndpoint; private set => SetProperty(ref _listeningEndpoint, value); }
     public string DiscoveryLastError { get => _discoveryLastError; private set => SetProperty(ref _discoveryLastError, value); }
     public string DiscoveryLastPublishedAtUtc { get => _discoveryLastPublishedAtUtc; private set => SetProperty(ref _discoveryLastPublishedAtUtc, value); }
     public string PairingState { get => _pairingState; private set => SetProperty(ref _pairingState, value); }
@@ -206,8 +210,11 @@ public sealed class MainViewModel : ObservableObject
 
         UpdateNetworkDiagnostics(hostAddresses[0], _server.Port);
         var payload = await _pairingSessionManager.StartPairingAsync(_server.Port, hostAddresses);
-        var content = JsonSerializer.Serialize(payload, ProtocolSerializerOptions.CamelCase);
+        var content = BuildCompactPairingQrPayload(payload);
         _pairingQrPng = _qrCodeGenerator.GeneratePng(content, 4);
+        var qrSize = ReadPngSize(_pairingQrPng);
+        Debug.WriteLine($"DeviceSync QR payload byte length: {System.Text.Encoding.UTF8.GetByteCount(content)}");
+        Debug.WriteLine($"DeviceSync QR PNG width/height: {qrSize.Width}x{qrSize.Height}");
         PairingQrImage = PngToImageSource(_pairingQrPng);
         PairingDeviceName = payload.WindowsDeviceName;
         PairingVerificationCode = "-";
@@ -403,6 +410,41 @@ public sealed class MainViewModel : ObservableObject
     {
         AdvertisedAddress = string.IsNullOrWhiteSpace(address) ? "-" : address;
         TcpEndpoint = string.IsNullOrWhiteSpace(address) ? "-" : $"{address}:{port}";
+        ListeningEndpoint = $"0.0.0.0:{port}";
+    }
+
+    private static string BuildCompactPairingQrPayload(PairingQrPayload payload)
+    {
+        var compact = new Dictionary<string, object?>
+        {
+            ["f"] = payload.Format,
+            ["v"] = payload.Version,
+            ["sid"] = payload.SessionId,
+            ["sec"] = payload.PairingSecret,
+            ["exp"] = payload.ExpiresAtUtc,
+            ["h"] = payload.HostAddresses,
+            ["p"] = payload.Port,
+            ["did"] = payload.WindowsDeviceId,
+            ["dn"] = payload.WindowsDeviceName,
+            ["pk"] = payload.WindowsIdentityPublicKey,
+            ["fp"] = payload.WindowsIdentityFingerprint,
+            ["pmin"] = payload.ProtocolMin,
+            ["pmax"] = payload.ProtocolMax,
+        };
+        return JsonSerializer.Serialize(compact, ProtocolSerializerOptions.CamelCase);
+    }
+
+    private static (int Width, int Height) ReadPngSize(byte[] png)
+    {
+        return (ReadBigEndianInt32(png, 16), ReadBigEndianInt32(png, 20));
+    }
+
+    private static int ReadBigEndianInt32(byte[] bytes, int offset)
+    {
+        return (bytes[offset] << 24) |
+            (bytes[offset + 1] << 16) |
+            (bytes[offset + 2] << 8) |
+            bytes[offset + 3];
     }
 
     private static class ProtocolSerializerOptions

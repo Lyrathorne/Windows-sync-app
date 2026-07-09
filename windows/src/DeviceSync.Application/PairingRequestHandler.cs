@@ -2,7 +2,7 @@ using DeviceSync.Protocol;
 
 namespace DeviceSync.Application;
 
-public sealed record PairingRequestResult(ProtocolMessage Response, bool Accepted);
+public sealed record PairingRequestResult(ProtocolMessage Response, bool Accepted, string? Code = null);
 
 public sealed class PairingRequestHandler
 {
@@ -32,20 +32,36 @@ public sealed class PairingRequestHandler
 
         var request = ProtocolSerializer.DecodePayload<PairingRequestPayload>(message.Payload);
         var qr = _pairingSessionManager.CurrentQrPayload;
-        if (qr is null || _pairingSessionManager.CurrentSession is null)
+        var currentSession = _pairingSessionManager.CurrentSession;
+        if (qr is null || currentSession is null)
         {
-            return Rejected(request, "PAIRING_UNAVAILABLE");
+            return Rejected(request, "SESSION_NOT_FOUND");
+        }
+
+        if (currentSession.SessionId != request.SessionId)
+        {
+            return Rejected(request, "SESSION_ID_MISMATCH");
+        }
+
+        if (DateTimeOffset.UtcNow > currentSession.ExpiresAtUtc)
+        {
+            return Rejected(request, "SESSION_EXPIRED");
+        }
+
+        if (currentSession.IsConsumed)
+        {
+            return Rejected(request, "SESSION_NOT_FOUND");
         }
 
         if (!IsValidRequestShape(request))
         {
-            return Rejected(request, "PAIRING_REJECTED");
+            return Rejected(request, "INVALID_REQUEST");
         }
 
         var androidPublicKey = SecurityEncoding.Base64UrlDecode(request.AndroidIdentityPublicKey);
         if (SecurityEncoding.Fingerprint(androidPublicKey) != request.AndroidIdentityFingerprint)
         {
-            return Rejected(request, "PAIRING_REJECTED");
+            return Rejected(request, "INVALID_REQUEST");
         }
 
         var transcript = TranscriptBuilder.PairingRequest(
@@ -59,7 +75,7 @@ public sealed class PairingRequestHandler
         var session = _pairingSessionManager.ConsumeIfProofValid(request.SessionId, proof, transcript);
         if (session is null)
         {
-            return Rejected(request, "PAIRING_REJECTED");
+            return Rejected(request, "INVALID_PROOF");
         }
 
         var windowsPublicKey = await _keyProvider.GetPublicKeyAsync(cancellationToken).ConfigureAwait(false);
@@ -307,7 +323,8 @@ public sealed class PairingRequestHandler
                     Fatal = true,
                 }),
             },
-            Accepted: false);
+            Accepted: false,
+            Code: code);
     }
 
     private static ProtocolMessage Rejected(string sessionId, string recipientDeviceId)

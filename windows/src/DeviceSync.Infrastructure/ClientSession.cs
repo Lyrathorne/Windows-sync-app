@@ -55,8 +55,10 @@ public sealed class ClientSession : IDeviceMessageWriter
             using var handshakeTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
             using var handshakeCts = CancellationTokenSource.CreateLinkedTokenSource(linkedCts.Token, handshakeTimeout.Token);
             var firstMessage = await reader.ReadAsync(handshakeCts.Token).ConfigureAwait(false);
+            _logger.LogInformation("FIRST_FRAME_RECEIVED {MessageType}", firstMessage.Type);
             if (firstMessage.Type == ProtocolMessageTypes.PairingRequest)
             {
+                _logger.LogInformation("PAIRING_REQUEST_ROUTED");
                 await HandlePairingRequestAsync(firstMessage, reader, writer, linkedCts.Token).ConfigureAwait(false);
                 return;
             }
@@ -168,7 +170,20 @@ public sealed class ClientSession : IDeviceMessageWriter
         }
 
         var result = await _pairingRequestHandler.HandleAsync(message, cancellationToken).ConfigureAwait(false);
+        if (result.Accepted)
+        {
+            _logger.LogInformation("PAIRING_REQUEST_VALIDATED");
+            _logger.LogInformation("PAIRING_CHALLENGE_QUEUED");
+        }
+        else
+        {
+            _logger.LogInformation("PAIRING_REQUEST_REJECTED {Code}", result.Code ?? "UNKNOWN");
+        }
         await writer.WriteAsync(result.Response, cancellationToken).ConfigureAwait(false);
+        if (result.Accepted)
+        {
+            _logger.LogInformation("PAIRING_CHALLENGE_SENT");
+        }
         if (!result.Accepted)
         {
             return;

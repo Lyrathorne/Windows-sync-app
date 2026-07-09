@@ -59,6 +59,30 @@ public sealed class PairingRequestHandlerTests
 
         Assert.False(result.Accepted);
         Assert.Equal(ProtocolMessageTypes.PairingRejected, result.Response.Type);
+        Assert.Equal("INVALID_PROOF", ProtocolSerializer.DecodePayload<ProtocolErrorPayload>(result.Response.Payload).Code);
+    }
+
+    [Fact]
+    public async Task SessionIdMismatch_ReturnsSpecificRejection()
+    {
+        using var windowsKey = new FakeDeviceIdentityKeyProvider();
+        var identity = new FakeIdentityProvider("windows-test");
+        var manager = new PairingSessionManager(identity, windowsKey);
+        var qr = await manager.StartPairingAsync(54321, ["127.0.0.1"]);
+        using var androidKey = ECDsa.Create(ECCurve.NamedCurves.nistP256);
+        var androidPublicKey = androidKey.ExportSubjectPublicKeyInfo();
+        var androidFingerprint = SecurityEncoding.Fingerprint(androidPublicKey);
+
+        var handler = new PairingRequestHandler(manager, identity, windowsKey, new FakeTrustedDeviceRepository());
+        var result = await handler.HandleAsync(Request(
+            $"{qr.SessionId}-other",
+            androidPublicKey,
+            androidFingerprint,
+            SecurityEncoding.Base64UrlEncode(RandomNumberGenerator.GetBytes(32)),
+            SecurityEncoding.Base64UrlEncode(RandomNumberGenerator.GetBytes(32))));
+
+        Assert.False(result.Accepted);
+        Assert.Equal("SESSION_ID_MISMATCH", ProtocolSerializer.DecodePayload<ProtocolErrorPayload>(result.Response.Payload).Code);
     }
 
     [Fact]

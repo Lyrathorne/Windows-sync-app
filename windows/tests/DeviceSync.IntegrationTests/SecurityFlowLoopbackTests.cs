@@ -12,6 +12,32 @@ namespace DeviceSync.IntegrationTests;
 public sealed class SecurityFlowLoopbackTests
 {
     [Fact]
+    public async Task PairingRequestLoopback_ReturnsChallengeWithoutHanging()
+    {
+        using var testTimeout = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        using var workspace = TempWorkspace.Create();
+        var fixture = await SecurityFixture.StartAsync(workspace);
+        using var android = AndroidPeer.Create("android-loopback", "Pixel");
+
+        try
+        {
+            var qr = await fixture.Pairing.StartPairingAsync(fixture.Server.Port, ["127.0.0.1"], testTimeout.Token);
+            await using var client = await android.ConnectAsync(fixture.Server.Port);
+            await client.Writer.WriteAsync(android.BuildPairingRequest(qr), testTimeout.Token);
+            var challengeMessage = await client.Reader.ReadAsync(testTimeout.Token);
+
+            Assert.Equal(ProtocolMessageTypes.PairingChallenge, challengeMessage.Type);
+            var challenge = ProtocolSerializer.DecodePayload<PairingChallengePayload>(challengeMessage.Payload);
+            Assert.Equal(qr.SessionId, challenge.SessionId);
+            Assert.Equal(qr.WindowsDeviceId, challenge.WindowsDeviceId);
+        }
+        finally
+        {
+            await fixture.Server.StopAsync();
+        }
+    }
+
+    [Fact]
     public async Task PairingAuthHeartbeatAndWindowsRevoke_EndToEnd()
     {
         using var workspace = TempWorkspace.Create();

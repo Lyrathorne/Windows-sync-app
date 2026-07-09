@@ -54,6 +54,7 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
         _serverCts = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         _listener = new TcpListener(IPAddress.Any, Port);
         _listener.Start();
+        _logger.LogInformation("TCP_LISTENER_STARTED address=0.0.0.0 port={Port}", Port);
         IsRunning = true;
         StateChanged?.Invoke(this, new ServerStateChangedEventArgs(true, Port, $"Listening on port {Port}"));
         _acceptLoop = AcceptLoopAsync(_serverCts.Token);
@@ -123,6 +124,7 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
                 break;
             }
 
+            _logger.LogInformation("TCP_CLIENT_ACCEPTED remote={Endpoint}", client.Client.RemoteEndPoint?.ToString() ?? "unknown");
             _ = HandleClientAsync(client, cancellationToken);
         }
     }

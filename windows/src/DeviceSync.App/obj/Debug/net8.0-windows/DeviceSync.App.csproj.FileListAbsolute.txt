@@ -56,3 +56,5 @@ C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.App\obj\Debug\ne
 C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.App\obj\Debug\net8.0-windows\DeviceSync.App.pdb
 C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.App\obj\Debug\net8.0-windows\DeviceSync.App.genruntimeconfig.cache
 C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.App\obj\Debug\net8.0-windows\ref\DeviceSync.App.dll
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.App\obj\Debug\net8.0-windows\PairingWindow.baml
+C:\Users\Gleb\Documents\Windows sync app\windows\src\DeviceSync.App\obj\Debug\net8.0-windows\PairingWindow.g.cs
