@@ -20,6 +20,8 @@ public partial class App : System.Windows.Application
             {
                 logging.ClearProviders();
                 logging.AddDebug();
+                logging.AddConsole();
+                logging.SetMinimumLevel(LogLevel.Information);
             })
             .ConfigureServices(services =>
             {
