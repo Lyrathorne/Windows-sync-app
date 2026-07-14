@@ -152,13 +152,52 @@
         </Border>
 
         <DockPanel Grid.Row="7" Margin="0,16,0,0" LastChildFill="False">
-            <TextBlock DockPanel.Dock="Left"
-                       Text="If the phone sees this computer but cannot connect, run Get-NetTCPConnection -LocalPort 54321 and allow DeviceSync TCP in Windows Firewall."
-                       VerticalAlignment="Center"
-                       TextWrapping="Wrap"
-                       MaxWidth="420"
-                       Foreground="#555555" />
+            <StackPanel DockPanel.Dock="Left" Width="260">
+                <CheckBox Content="Clipboard sync (opt-in)" IsChecked="{Binding ClipboardSyncEnabled}" />
+                <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}" />
+                <DockPanel Margin="0,6,0,0">
+                    <Button DockPanel.Dock="Right" Content="Send" Width="52" Command="{Binding SendTextCommand}" />
+                    <TextBox Text="{Binding TextToShare, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" />
+                </DockPanel>
+                <Button Content="Send clipboard now" Margin="0,6,0,0" Command="{Binding SendClipboardCommand}" />
+                <Button Content="Select folder to compare" Margin="0,6,0,0" Command="{Binding StartFolderSyncCommand}" />
+                <TextBlock Text="{Binding FolderSyncStatus}" TextWrapping="Wrap" />
+                <ItemsControl ItemsSource="{Binding FolderConflicts}" Margin="0,4,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <StackPanel>
+                                <TextBlock Text="{Binding RelativePath}" TextTrimming="CharacterEllipsis" />
+                                <ComboBox ItemsSource="{Binding Options}" SelectedItem="{Binding Resolution}" />
+                            </StackPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <Button Content="Approve folder plan" Margin="0,6,0,0" Command="{Binding ApproveFolderSyncCommand}" />
+                <ItemsControl ItemsSource="{Binding SharedTextHistory}" Margin="0,6,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Button Content="{Binding Text}"
+                                    HorizontalContentAlignment="Left"
+                                    Command="{Binding DataContext.OpenSharedLinkCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                    CommandParameter="{Binding}" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Notifications}" Margin="0,6,0,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding Title}" ToolTip="{Binding Text}" TextTrimming="CharacterEllipsis" />
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </StackPanel>
             <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+                <StackPanel Width="190" Margin="0,0,12,0">
+                    <TextBlock Text="{Binding OutgoingFileStatus}" TextTrimming="CharacterEllipsis" />
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding OutgoingFileProgress}" Height="8" />
+                </StackPanel>
+                <Button Content="Send file" Width="88" Margin="0,0,8,0" Command="{Binding SendFileCommand}" />
+                <Button Content="Cancel file" Width="88" Margin="0,0,8,0" Command="{Binding CancelOutgoingFileCommand}" />
                 <Button Content="Start"
                         Width="88"
                         Margin="0,0,8,0"

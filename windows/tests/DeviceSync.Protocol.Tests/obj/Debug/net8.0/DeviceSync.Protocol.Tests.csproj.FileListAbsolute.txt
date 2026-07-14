@@ -100,3 +100,14 @@ C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests
 C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\obj\Debug\net8.0\DeviceSync.Protocol.Tests.pdb
 C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\obj\Debug\net8.0\DeviceSync.Protocol.Tests.genruntimeconfig.cache
 C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\obj\Debug\net8.0\ref\DeviceSync.Protocol.Tests.dll
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\01-file-offer.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\02-file-accept.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\03-file-chunk.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\04-file-complete.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\05-file-received.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\file-cancel.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\file-error.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\file-reject.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\v2-file-chunk-received.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\v2-file-resume-accepted.json
+C:\Users\Gleb\Documents\Windows sync app\windows\tests\DeviceSync.Protocol.Tests\bin\Debug\net8.0\TestVectors\file-transfer\v2-file-resume-request.json

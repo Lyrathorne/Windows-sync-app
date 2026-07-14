@@ -1,11 +1,19 @@
 namespace DeviceSync.Application;
 
+using System.Security.Cryptography.X509Certificates;
+
 public interface IDeviceIdentityKeyProvider
 {
     Task<byte[]> GetPublicKeyAsync(CancellationToken cancellationToken = default);
     Task<string> GetPublicKeyFingerprintAsync(CancellationToken cancellationToken = default);
     Task<byte[]> SignAsync(ReadOnlyMemory<byte> data, CancellationToken cancellationToken = default);
     bool Verify(ReadOnlySpan<byte> publicKey, ReadOnlySpan<byte> data, ReadOnlySpan<byte> signature);
+}
+
+public interface ITlsCertificateProvider
+{
+    Task<X509Certificate2> GetServerCertificateAsync(CancellationToken cancellationToken = default);
+    Task<string> GetServerSpkiFingerprintAsync(CancellationToken cancellationToken = default);
 }
 
 public interface IProtectedKeyStorage

@@ -37,6 +37,9 @@ public sealed class PairingSessionManager : IPairingSessionManager
         var deviceId = await _deviceIdentityProvider.GetOrCreateDeviceIdAsync(cancellationToken).ConfigureAwait(false);
         var publicKey = await _keyProvider.GetPublicKeyAsync(cancellationToken).ConfigureAwait(false);
         var fingerprint = await _keyProvider.GetPublicKeyFingerprintAsync(cancellationToken).ConfigureAwait(false);
+        var tlsFingerprint = _keyProvider is ITlsCertificateProvider tlsCertificateProvider
+            ? await tlsCertificateProvider.GetServerSpkiFingerprintAsync(cancellationToken).ConfigureAwait(false)
+            : null;
         var session = new PairingSession
         {
             SessionId = $"pair-{Guid.NewGuid()}",
@@ -59,6 +62,7 @@ public sealed class PairingSessionManager : IPairingSessionManager
             WindowsDeviceName = settings.DeviceName ?? Environment.MachineName,
             WindowsIdentityPublicKey = SecurityEncoding.Base64UrlEncode(publicKey),
             WindowsIdentityFingerprint = fingerprint,
+            TlsServerSpkiFingerprint = tlsFingerprint,
             ProtocolMin = ProtocolConstants.ProtocolVersion,
             ProtocolMax = ProtocolConstants.ProtocolVersion,
         };

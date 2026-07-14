@@ -51,6 +51,7 @@ public sealed record PairingQrPayload
     public required string WindowsDeviceName { get; init; }
     public required string WindowsIdentityPublicKey { get; init; }
     public required string WindowsIdentityFingerprint { get; init; }
+    public string? TlsServerSpkiFingerprint { get; init; }
     public required int ProtocolMin { get; init; }
     public required int ProtocolMax { get; init; }
 }

@@ -15,6 +15,10 @@ public sealed class ClientSession : IDeviceMessageWriter
     private readonly HeartbeatResponder _heartbeatResponder;
     private readonly DeviceSessionRegistry _registry;
     private readonly ILogger _logger;
+    private readonly IncomingFileTransferManager? _incomingFileTransferManager;
+    private readonly Stream? _transportStream;
+    private readonly WindowsFileTransferTransport? _outgoingFileTransferTransport;
+    private readonly FeatureMessageTransport? _featureMessageTransport;
     private readonly Channel<ProtocolMessage> _outgoing = Channel.CreateUnbounded<ProtocolMessage>();
     private readonly CancellationTokenSource _sessionCts = new();
     private int _cleanupStarted;
@@ -29,7 +33,11 @@ public sealed class ClientSession : IDeviceMessageWriter
         PairingRequestHandler? pairingRequestHandler,
         HeartbeatResponder heartbeatResponder,
         DeviceSessionRegistry registry,
-        ILogger logger)
+        ILogger logger,
+        IncomingFileTransferManager? incomingFileTransferManager = null,
+        Stream? transportStream = null,
+        WindowsFileTransferTransport? outgoingFileTransferTransport = null,
+        FeatureMessageTransport? featureMessageTransport = null)
     {
         _client = client;
         _handshakeHandler = handshakeHandler;
@@ -38,6 +46,10 @@ public sealed class ClientSession : IDeviceMessageWriter
         _heartbeatResponder = heartbeatResponder;
         _registry = registry;
         _logger = logger;
+        _incomingFileTransferManager = incomingFileTransferManager;
+        _transportStream = transportStream;
+        _outgoingFileTransferTransport = outgoingFileTransferTransport;
+        _featureMessageTransport = featureMessageTransport;
     }
 
     public event EventHandler<DeviceSessionChangedEventArgs>? SessionChanged;
@@ -48,7 +60,7 @@ public sealed class ClientSession : IDeviceMessageWriter
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(serverCancellationToken, _sessionCts.Token);
         try
         {
-            await using var stream = _client.GetStream();
+            await using var stream = _transportStream ?? _client.GetStream();
             var reader = new ProtocolFrameReader(stream);
             var writer = new ProtocolFrameWriter(stream);
 
@@ -89,7 +101,13 @@ public sealed class ClientSession : IDeviceMessageWriter
             _deviceId = handshake.Session.DeviceId;
             _windowsDeviceId = handshake.Accepted.SenderDeviceId;
             _registeredSession = handshake.Session;
+            if (_incomingFileTransferManager is not null)
+            {
+                _incomingFileTransferManager.ResponseRequested += OnFileTransferResponseRequested;
+            }
             SessionAccepted?.Invoke(this, EventArgs.Empty);
+            _outgoingFileTransferTransport?.Attach(this, _windowsDeviceId!, _deviceId!, _registeredSession?.Capabilities ?? []);
+            _featureMessageTransport?.Attach(this, _windowsDeviceId!, _deviceId!);
             SessionChanged?.Invoke(this, new DeviceSessionChangedEventArgs(handshake.Session));
             await writer.WriteAsync(handshake.Accepted, linkedCts.Token).ConfigureAwait(false);
 
@@ -259,6 +277,84 @@ public sealed class ClientSession : IDeviceMessageWriter
                 case ProtocolMessageTypes.ConnectionClose:
                     _sessionCts.Cancel();
                     return;
+                case ProtocolMessageTypes.FileOffer:
+                    if (_incomingFileTransferManager is not null)
+                    {
+                        _ = ProcessFileResponseAsync(
+                            message,
+                            _incomingFileTransferManager.HandleOfferAsync(
+                                message.SenderDeviceId,
+                                ProtocolSerializer.DecodePayload<FileOfferPayload>(message.Payload),
+                                cancellationToken,
+                                resumable: _registeredSession?.Capabilities.Contains(SupportedCapabilities.FileTransferV2) == true),
+                            cancellationToken);
+                    }
+                    break;
+                case ProtocolMessageTypes.FileChunk:
+                    if (_incomingFileTransferManager is not null)
+                    {
+                        await ProcessFileResponseAsync(
+                            message,
+                            _incomingFileTransferManager.HandleChunkAsync(
+                                message.SenderDeviceId,
+                                ProtocolSerializer.DecodePayload<FileChunkPayload>(message.Payload),
+                                cancellationToken),
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                    break;
+                case ProtocolMessageTypes.FileComplete:
+                    if (_incomingFileTransferManager is not null)
+                    {
+                        await ProcessRequiredFileResponseAsync(
+                            message,
+                            _incomingFileTransferManager.HandleCompleteAsync(
+                                message.SenderDeviceId,
+                                ProtocolSerializer.DecodePayload<FileCompletePayload>(message.Payload),
+                                cancellationToken),
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                    break;
+                case ProtocolMessageTypes.FileResumeRequest:
+                    if (_incomingFileTransferManager is not null)
+                    {
+                        await ProcessRequiredFileResponseAsync(
+                            message,
+                            _incomingFileTransferManager.HandleResumeRequestAsync(
+                                message.SenderDeviceId,
+                                ProtocolSerializer.DecodePayload<FileResumeRequestPayload>(message.Payload),
+                                cancellationToken),
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                    break;
+                case ProtocolMessageTypes.FileCancel:
+                    _outgoingFileTransferTransport?.Route(message.Type, message.Payload);
+                    if (_incomingFileTransferManager is not null)
+                    {
+                        await _incomingFileTransferManager.HandleCancelAsync(
+                            message.SenderDeviceId,
+                            ProtocolSerializer.DecodePayload<FileCancelPayload>(message.Payload),
+                            cancellationToken).ConfigureAwait(false);
+                    }
+                    break;
+                case ProtocolMessageTypes.FileAccept:
+                case ProtocolMessageTypes.FileReject:
+                case ProtocolMessageTypes.FileReceived:
+                case ProtocolMessageTypes.FileError:
+                case ProtocolMessageTypes.FileChunkReceived:
+                case ProtocolMessageTypes.FileResumeAccepted:
+                    _outgoingFileTransferTransport?.Route(message.Type, message.Payload);
+                    break;
+                case ProtocolMessageTypes.ClipboardUpdate:
+                case ProtocolMessageTypes.TextShare:
+                case ProtocolMessageTypes.NotificationPosted:
+                case ProtocolMessageTypes.NotificationRemoved:
+                case ProtocolMessageTypes.FolderManifest:
+                        case ProtocolMessageTypes.FolderPlan:
+                        case ProtocolMessageTypes.FolderPlanApproved:
+                case ProtocolMessageTypes.FolderCancel:
+                case ProtocolMessageTypes.FolderError:
+                    _featureMessageTransport?.Route(message.Type, message.Payload);
+                    break;
                 case ProtocolMessageTypes.MessageAck:
                 case ProtocolMessageTypes.ConnectionPong:
                 case ProtocolMessageTypes.ProtocolError:
@@ -280,6 +376,70 @@ public sealed class ClientSession : IDeviceMessageWriter
         {
             await writer.WriteAsync(message, cancellationToken).ConfigureAwait(false);
         }
+    }
+
+    private async Task ProcessFileResponseAsync(
+        ProtocolMessage request,
+        Task<FileTransferResponse?> responseTask,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            var response = await responseTask.ConfigureAwait(false);
+            if (response is null || cancellationToken.IsCancellationRequested)
+            {
+                return;
+            }
+
+            await EnqueueAsync(new ProtocolMessage
+            {
+                ProtocolVersion = ProtocolConstants.ProtocolVersion,
+                MessageId = Guid.NewGuid().ToString(),
+                Type = response.Type,
+                SenderDeviceId = _windowsDeviceId ?? throw new InvalidOperationException("File response requires an authenticated session."),
+                RecipientDeviceId = request.SenderDeviceId,
+                TimestampUtc = DateTimeOffset.UtcNow.ToString("O"),
+                CorrelationId = request.MessageId,
+                RequiresAcknowledgement = false,
+                Payload = response.Payload,
+            }, cancellationToken).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+        }
+        catch (Exception error)
+        {
+            _logger.LogWarning(error, "FILE_TRANSFER_FAILED sender={SenderDeviceId}", request.SenderDeviceId);
+        }
+    }
+
+    private Task ProcessRequiredFileResponseAsync(
+        ProtocolMessage request,
+        Task<FileTransferResponse> responseTask,
+        CancellationToken cancellationToken)
+        => ProcessFileResponseAsync(request, AwaitNullableAsync(responseTask), cancellationToken);
+
+    private static async Task<FileTransferResponse?> AwaitNullableAsync(Task<FileTransferResponse> task)
+        => await task.ConfigureAwait(false);
+
+    private void OnFileTransferResponseRequested(object? sender, FileTransferResponseRequestedEventArgs args)
+    {
+        if (_deviceId is null || _windowsDeviceId is null || args.Transfer.SenderDeviceId != _deviceId)
+        {
+            return;
+        }
+
+        _ = EnqueueAsync(new ProtocolMessage
+        {
+            ProtocolVersion = ProtocolConstants.ProtocolVersion,
+            MessageId = Guid.NewGuid().ToString(),
+            Type = args.Response.Type,
+            SenderDeviceId = _windowsDeviceId,
+            RecipientDeviceId = _deviceId,
+            TimestampUtc = DateTimeOffset.UtcNow.ToString("O"),
+            RequiresAcknowledgement = false,
+            Payload = args.Response.Payload,
+        }, _sessionCts.Token);
     }
 
     private ProtocolMessage BuildAck(ProtocolMessage message, string status)
@@ -327,14 +487,24 @@ public sealed class ClientSession : IDeviceMessageWriter
 
         _sessionCts.Cancel();
         _outgoing.Writer.TryComplete();
+        if (_incomingFileTransferManager is not null)
+        {
+            _incomingFileTransferManager.ResponseRequested -= OnFileTransferResponseRequested;
+        }
+        _outgoingFileTransferTransport?.Detach(this);
+        _featureMessageTransport?.Detach(this);
         _client.Close();
         if (_registeredSession is not null)
         {
             _registry.Remove(_registeredSession);
         }
 
+        if (_incomingFileTransferManager is not null && _deviceId is not null)
+        {
+            await _incomingFileTransferManager.HandleDisconnectAsync(_deviceId).ConfigureAwait(false);
+        }
+
         SessionChanged?.Invoke(this, new DeviceSessionChangedEventArgs(null));
-        await Task.CompletedTask;
     }
 
     private static async Task SuppressAsync(Task task)

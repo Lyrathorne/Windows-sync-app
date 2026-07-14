@@ -1,6 +1,9 @@
 using System.Net;
 using System.Net.Sockets;
 using System.Net.NetworkInformation;
+using System.Net.Security;
+using System.Security.Authentication;
+using System.Security.Cryptography.X509Certificates;
 using DeviceSync.Application;
 using DeviceSync.Infrastructure;
 using DeviceSync.Protocol;
@@ -69,6 +72,66 @@ public sealed class TcpDeviceServerIntegrationTests
         }
     }
 
+    [Fact]
+    public async Task TlsServer_AcceptsPinnedIdentity_AndRejectsWrongPin()
+    {
+        var port = GetFreePort();
+        var identity = new IntegrationIdentityProvider("windows-tls", port);
+        var certificates = new WindowsDeviceIdentityKeyProvider(
+            new MemoryTlsKeyStorage(),
+            new PassThroughTlsProtector());
+        await using var server = new TcpDeviceServer(
+            identity,
+            new DeviceSessionRegistry(),
+            tlsCertificateProvider: certificates);
+        await server.StartAsync();
+
+        try
+        {
+            var expectedPin = await certificates.GetServerSpkiFingerprintAsync();
+            System.Security.Cryptography.X509Certificates.X509Certificate? presentedCertificate = null;
+            using var client = new TcpClient();
+            await client.ConnectAsync(IPAddress.Loopback, port);
+            await using var tls = new SslStream(
+                client.GetStream(),
+                false,
+                (_, certificate, _, _) =>
+                {
+                    presentedCertificate = certificate;
+                    return certificate is not null;
+                });
+            await tls.AuthenticateAsClientAsync(new SslClientAuthenticationOptions
+            {
+                TargetHost = "DeviceSync",
+                EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                CertificateRevocationCheckMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck,
+            });
+            Assert.NotNull(presentedCertificate);
+            Assert.True(CertificateMatchesPin(presentedCertificate!, expectedPin));
+
+            var reader = new ProtocolFrameReader(tls);
+            var writer = new ProtocolFrameWriter(tls);
+            await writer.WriteAsync(AndroidHello());
+            Assert.Equal(ProtocolMessageTypes.ConnectionHelloAck, (await reader.ReadAsync()).Type);
+
+            using var wrongPinClient = new TcpClient();
+            await wrongPinClient.ConnectAsync(IPAddress.Loopback, port);
+            await using var wrongPinTls = new SslStream(wrongPinClient.GetStream(), false, (_, _, _, _) => false);
+            await Assert.ThrowsAnyAsync<AuthenticationException>(() => wrongPinTls.AuthenticateAsClientAsync("DeviceSync"));
+        }
+        finally
+        {
+            await server.StopAsync();
+        }
+    }
+
+    private static bool CertificateMatchesPin(System.Security.Cryptography.X509Certificates.X509Certificate certificate, string expectedPin)
+    {
+        using var certificate2 = new X509Certificate2(certificate);
+        using var key = certificate2.GetECDsaPublicKey();
+        return key is not null && SecurityEncoding.Fingerprint(key.ExportSubjectPublicKeyInfo()) == expectedPin;
+    }
+
     private static int GetFreePort()
     {
         var listener = new TcpListener(IPAddress.Loopback, 0);
@@ -120,6 +183,29 @@ public sealed class TcpDeviceServerIntegrationTests
         Payload = ProtocolSerializer.PayloadToJson(new ConnectionClosePayload { Reason = "test", AllowReconnect = true }),
     };
 }
+
+internal sealed class MemoryTlsKeyStorage : IProtectedKeyStorage
+{
+    private byte[]? _bytes;
+    public Task<byte[]?> ReadProtectedAsync(CancellationToken cancellationToken = default) => Task.FromResult(_bytes);
+    public Task WriteProtectedAtomicAsync(byte[] protectedBytes, CancellationToken cancellationToken = default)
+    {
+        _bytes = protectedBytes.ToArray();
+        return Task.CompletedTask;
+    }
+    public Task DeleteAsync(CancellationToken cancellationToken = default)
+    {
+        _bytes = null;
+        return Task.CompletedTask;
+    }
+}
+
+internal sealed class PassThroughTlsProtector : IDataProtector
+{
+    public byte[] Protect(byte[] plainBytes) => plainBytes.ToArray();
+    public byte[] Unprotect(byte[] protectedBytes) => protectedBytes.ToArray();
+}
+
 
 internal sealed class IntegrationIdentityProvider : IWindowsDeviceIdentityProvider
 {

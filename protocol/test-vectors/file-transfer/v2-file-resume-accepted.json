@@ -1,0 +1,14 @@
+{
+  "protocolVersion": 1,
+  "messageId": "v2-resume-accepted-1",
+  "type": "file.resume.accepted",
+  "senderDeviceId": "windows-test",
+  "recipientDeviceId": "android-test",
+  "timestampUtc": "2026-07-14T12:00:01Z",
+  "requiresAcknowledgement": false,
+  "payload": {
+    "transferId": "550e8400-e29b-41d4-a716-446655440000",
+    "nextChunkIndex": 4,
+    "offset": 262144
+  }
+}

@@ -1,0 +1,16 @@
+{
+  "protocolVersion": 1,
+  "messageId": "v2-resume-request-1",
+  "type": "file.resume.request",
+  "senderDeviceId": "android-test",
+  "recipientDeviceId": "windows-test",
+  "timestampUtc": "2026-07-14T12:00:00Z",
+  "requiresAcknowledgement": false,
+  "payload": {
+    "transferId": "550e8400-e29b-41d4-a716-446655440000",
+    "fileName": "photo.jpg",
+    "sizeBytes": 1258291,
+    "sha256": "ZOyIygCyaOW6GjVnihtTFtIS9PNmskdyMlNKiuyjfzw",
+    "chunkSize": 65536
+  }
+}

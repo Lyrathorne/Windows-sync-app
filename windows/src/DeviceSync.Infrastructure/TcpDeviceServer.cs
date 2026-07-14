@@ -1,5 +1,7 @@
 using System.Net;
 using System.Net.Sockets;
+using System.Net.Security;
+using System.Security.Authentication;
 using DeviceSync.Application;
 using DeviceSync.Protocol;
 using Microsoft.Extensions.Logging;
@@ -15,6 +17,10 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
     private readonly ITrustedDeviceRepository? _trustedDeviceRepository;
     private readonly DeviceSessionRegistry _registry;
     private readonly ILogger<TcpDeviceServer> _logger;
+    private readonly IncomingFileTransferManager? _incomingFileTransferManager;
+    private readonly ITlsCertificateProvider? _tlsCertificateProvider;
+    private readonly WindowsFileTransferTransport? _outgoingFileTransferTransport;
+    private readonly FeatureMessageTransport? _featureMessageTransport;
     private readonly object _gate = new();
     private TcpListener? _listener;
     private CancellationTokenSource? _serverCts;
@@ -27,7 +33,11 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
         IPairingSessionManager? pairingSessionManager = null,
         IDeviceIdentityKeyProvider? keyProvider = null,
         ITrustedDeviceRepository? trustedDeviceRepository = null,
-        ILogger<TcpDeviceServer>? logger = null)
+        ILogger<TcpDeviceServer>? logger = null,
+        IncomingFileTransferManager? incomingFileTransferManager = null,
+        ITlsCertificateProvider? tlsCertificateProvider = null,
+        WindowsFileTransferTransport? outgoingFileTransferTransport = null,
+        FeatureMessageTransport? featureMessageTransport = null)
     {
         _identityProvider = identityProvider;
         _pairingSessionManager = pairingSessionManager;
@@ -35,6 +45,10 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
         _trustedDeviceRepository = trustedDeviceRepository;
         _registry = registry;
         _logger = logger ?? NullLogger<TcpDeviceServer>.Instance;
+        _incomingFileTransferManager = incomingFileTransferManager;
+        _tlsCertificateProvider = tlsCertificateProvider;
+        _outgoingFileTransferTransport = outgoingFileTransferTransport;
+        _featureMessageTransport = featureMessageTransport;
     }
 
     public int Port { get; private set; } = 54321;
@@ -131,6 +145,31 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
 
     private async Task HandleClientAsync(TcpClient client, CancellationToken serverCancellationToken)
     {
+        Stream? transportStream = null;
+        if (_tlsCertificateProvider is not null)
+        {
+            try
+            {
+                var sslStream = new SslStream(client.GetStream(), leaveInnerStreamOpen: false);
+                var certificate = await _tlsCertificateProvider.GetServerCertificateAsync(serverCancellationToken).ConfigureAwait(false);
+                await sslStream.AuthenticateAsServerAsync(new SslServerAuthenticationOptions
+                {
+                    ServerCertificate = certificate,
+                    ClientCertificateRequired = false,
+                    EnabledSslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13,
+                    CertificateRevocationCheckMode = System.Security.Cryptography.X509Certificates.X509RevocationMode.NoCheck,
+                }, serverCancellationToken).ConfigureAwait(false);
+                transportStream = sslStream;
+                _logger.LogInformation("TLS_SESSION_ESTABLISHED protocol={Protocol}", sslStream.SslProtocol);
+            }
+            catch (Exception error) when (error is AuthenticationException or IOException)
+            {
+                _logger.LogWarning(error, "TLS_HANDSHAKE_FAILED");
+                client.Dispose();
+                return;
+            }
+        }
+
         var session = new ClientSession(
             client,
             new ConnectionHandshakeHandler(_identityProvider),
@@ -138,7 +177,11 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
             CreatePairingRequestHandler(),
             new HeartbeatResponder(_identityProvider),
             _registry,
-            _logger);
+            _logger,
+            _incomingFileTransferManager,
+            transportStream,
+            _outgoingFileTransferTransport,
+            _featureMessageTransport);
 
         session.SessionChanged += (_, args) => SessionChanged?.Invoke(this, args);
         session.SessionAccepted += (_, _) =>

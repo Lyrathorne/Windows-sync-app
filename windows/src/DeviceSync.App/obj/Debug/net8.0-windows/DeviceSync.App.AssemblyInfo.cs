@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("DeviceSync.App")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+324bf98ff99cd75243d71ec2e28d0f496611717d")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a98b871fa4c935df0b082d2a22061d0353c59ff9")]
 [assembly: System.Reflection.AssemblyProductAttribute("DeviceSync.App")]
 [assembly: System.Reflection.AssemblyTitleAttribute("DeviceSync.App")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

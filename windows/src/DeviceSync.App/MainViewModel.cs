@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.Text.Json;
 using System.IO;
 using DeviceSync.Application;
+using Microsoft.Win32;
 
 namespace DeviceSync.App;
 
@@ -21,7 +22,14 @@ public sealed class MainViewModel : ObservableObject
     private readonly ITrustedDeviceRepository _trustedDeviceRepository;
     private readonly IQrCodeGenerator _qrCodeGenerator;
     private readonly ILocalNetworkAddressProvider _addressProvider;
+    private readonly OutgoingFileTransferManager _outgoingFileTransferManager;
+    private readonly OutgoingTransferQueue _outgoingTransferQueue;
+    private readonly SharingManager _sharingManager;
+    private readonly NotificationManager _notificationManager;
+    private readonly FolderSyncManager _folderSyncManager;
+    private readonly WindowsStartupService _startupService;
     private readonly System.Windows.Threading.DispatcherTimer _pairingTimer;
+    private readonly System.Windows.Threading.DispatcherTimer _clipboardTimer;
     private string _status = "Starting";
     private string _serverSummary = "Stopped";
     private string _windowsDeviceId = "";
@@ -48,6 +56,13 @@ public sealed class MainViewModel : ObservableObject
     private bool _isPairingVisible;
     private bool _isPairingConfirmationVisible;
     private bool _isRetryStartVisible;
+    private string _outgoingFileStatus = "No outgoing transfer";
+    private double _outgoingFileProgress;
+    private string _textToShare = "";
+    private bool _clipboardSyncEnabled;
+    private string _folderSyncStatus = "No folder sync active";
+    private bool _startWithWindows;
+    private string? _folderSyncId;
 
     public MainViewModel(
         IDeviceServer server,
@@ -57,7 +72,13 @@ public sealed class MainViewModel : ObservableObject
         ITrustedDeviceRepository trustedDeviceRepository,
         IQrCodeGenerator qrCodeGenerator,
         ILocalNetworkAddressProvider addressProvider,
-        IWindowsDeviceIdentityProvider identityProvider)
+        IWindowsDeviceIdentityProvider identityProvider,
+        OutgoingFileTransferManager outgoingFileTransferManager,
+        OutgoingTransferQueue outgoingTransferQueue,
+        SharingManager sharingManager,
+        NotificationManager notificationManager,
+        FolderSyncManager folderSyncManager,
+        WindowsStartupService startupService)
     {
         _server = server;
         _publisher = publisher;
@@ -67,6 +88,15 @@ public sealed class MainViewModel : ObservableObject
         _qrCodeGenerator = qrCodeGenerator;
         _addressProvider = addressProvider;
         _identityProvider = identityProvider;
+        _outgoingFileTransferManager = outgoingFileTransferManager;
+        _outgoingTransferQueue = outgoingTransferQueue;
+        _sharingManager = sharingManager;
+        _notificationManager = notificationManager;
+        _folderSyncManager = folderSyncManager;
+        _startupService = startupService;
+        _startWithWindows = startupService.IsEnabled;
+        _clipboardSyncEnabled = startupService.ClipboardEnabled;
+        _sharingManager.ClipboardEnabled = _clipboardSyncEnabled;
         StartCommand = new AsyncRelayCommand(StartAsync);
         StopCommand = new AsyncRelayCommand(StopAsync);
         DisconnectCommand = new AsyncRelayCommand(DisconnectAsync);
@@ -78,16 +108,63 @@ public sealed class MainViewModel : ObservableObject
         RejectPairingCodeCommand = new AsyncRelayCommand(RejectPairingCodeAsync);
         RevokeTrustedPhoneCommand = new AsyncRelayCommand<string>(RevokeTrustedPhoneAsync);
         SavePairingQrCommand = new AsyncRelayCommand(SavePairingQrAsync);
+        SendFileCommand = new AsyncRelayCommand(SendFileAsync);
+        CancelOutgoingFileCommand = new AsyncRelayCommand(() => _outgoingFileTransferManager.CancelAsync());
+        SendClipboardCommand = new AsyncRelayCommand(SendClipboardAsync);
+        SendTextCommand = new AsyncRelayCommand(SendTextAsync);
+        OpenSharedLinkCommand = new AsyncRelayCommand<SharedTextItem>(OpenSharedLinkAsync);
+        StartFolderSyncCommand = new AsyncRelayCommand(StartFolderSyncAsync);
+        ApproveFolderSyncCommand = new AsyncRelayCommand(ApproveFolderSyncAsync);
 
         _server.StateChanged += OnServerStateChanged;
         _server.SessionChanged += OnSessionChanged;
         _publisher.StateChanged += OnPublisherStateChanged;
         _pairingSessionManager.StateChanged += OnPairingStateChanged;
+        _outgoingFileTransferManager.Changed += OnOutgoingFileTransferChanged;
+        _sharingManager.ItemReceived += item => Dispatch(() =>
+        {
+            SharedTextHistory.Insert(0, item);
+            Status = item.Kind == "url" ? "A link was received. Open it from the sharing list." : "Text was received.";
+        });
+        _sharingManager.ClipboardReceived += text => Dispatch(() =>
+        {
+            try { System.Windows.Clipboard.SetText(text); } catch (System.Runtime.InteropServices.COMException) { }
+        });
+        _notificationManager.Posted += notification => Dispatch(() =>
+        {
+            Notifications.Insert(0, notification);
+            Status = $"{notification.AppName}: {notification.Title}";
+        });
+        _notificationManager.Removed += id => Dispatch(() =>
+        {
+            var item = Notifications.FirstOrDefault(candidate => candidate.NotificationId == id);
+            if (item is not null) Notifications.Remove(item);
+        });
+        _folderSyncManager.PlanCreated += plan => Dispatch(() =>
+        {
+            _folderSyncId = plan.SyncId;
+            FolderConflicts.Clear();
+            foreach (var conflict in plan.Operations.Where(operation => operation.Action == "conflict"))
+                FolderConflicts.Add(new FolderConflictChoice(conflict.RelativePath));
+            FolderSyncStatus = $"Plan: {plan.Operations.Count(operation => operation.Action == "upload")} upload, " +
+                $"{plan.Operations.Count(operation => operation.Action == "download")} download, " +
+                $"{FolderConflicts.Count} conflicts. Choose every conflict and approve.";
+        });
+        _folderSyncManager.StatusChanged += message => Dispatch(() => FolderSyncStatus = message);
         _pairingTimer = new System.Windows.Threading.DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1),
         };
         _pairingTimer.Tick += (_, _) => UpdatePairingTimer();
+        _clipboardTimer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
+        _clipboardTimer.Tick += async (_, _) =>
+        {
+            if (!ClipboardSyncEnabled || !System.Windows.Clipboard.ContainsText()) return;
+            var text = System.Windows.Clipboard.GetText();
+            if (_sharingManager.ShouldSendLocalClipboard(text))
+                try { await _sharingManager.SendClipboardAsync(text); } catch (InvalidOperationException) { }
+        };
+        _clipboardTimer.Start();
         _ = LoadIdentityAsync();
         _ = LoadTrustedPhonesAsync();
     }
@@ -103,7 +180,17 @@ public sealed class MainViewModel : ObservableObject
     public ICommand RejectPairingCodeCommand { get; }
     public ICommand RevokeTrustedPhoneCommand { get; }
     public ICommand SavePairingQrCommand { get; }
+    public ICommand SendFileCommand { get; }
+    public ICommand CancelOutgoingFileCommand { get; }
+    public ICommand SendClipboardCommand { get; }
+    public ICommand SendTextCommand { get; }
+    public ICommand OpenSharedLinkCommand { get; }
+    public ICommand StartFolderSyncCommand { get; }
+    public ICommand ApproveFolderSyncCommand { get; }
     public ObservableCollection<TrustedPhoneViewModel> TrustedPhones { get; } = [];
+    public ObservableCollection<SharedTextItem> SharedTextHistory { get; } = [];
+    public ObservableCollection<ReceivedNotification> Notifications { get; } = [];
+    public ObservableCollection<FolderConflictChoice> FolderConflicts { get; } = [];
     public string Status { get => _status; private set => SetProperty(ref _status, value); }
     public string ServerSummary { get => _serverSummary; private set => SetProperty(ref _serverSummary, value); }
     public string WindowsDeviceId { get => _windowsDeviceId; private set => SetProperty(ref _windowsDeviceId, value); }
@@ -129,6 +216,27 @@ public sealed class MainViewModel : ObservableObject
     public bool IsPairingVisible { get => _isPairingVisible; private set => SetProperty(ref _isPairingVisible, value); }
     public bool IsPairingConfirmationVisible { get => _isPairingConfirmationVisible; private set => SetProperty(ref _isPairingConfirmationVisible, value); }
     public bool IsRetryStartVisible { get => _isRetryStartVisible; private set => SetProperty(ref _isRetryStartVisible, value); }
+    public string OutgoingFileStatus { get => _outgoingFileStatus; private set => SetProperty(ref _outgoingFileStatus, value); }
+    public double OutgoingFileProgress { get => _outgoingFileProgress; private set => SetProperty(ref _outgoingFileProgress, value); }
+    public string TextToShare { get => _textToShare; set => SetProperty(ref _textToShare, value); }
+    public bool ClipboardSyncEnabled
+    {
+        get => _clipboardSyncEnabled;
+        set
+        {
+            if (SetProperty(ref _clipboardSyncEnabled, value))
+            {
+                _sharingManager.ClipboardEnabled = value;
+                _startupService.ClipboardEnabled = value;
+            }
+        }
+    }
+    public string FolderSyncStatus { get => _folderSyncStatus; private set => SetProperty(ref _folderSyncStatus, value); }
+    public bool StartWithWindows
+    {
+        get => _startWithWindows;
+        set { if (SetProperty(ref _startWithWindows, value)) _startupService.SetEnabled(value); }
+    }
 #if DEBUG
     public bool IsDebugBuild => true;
 #else
@@ -157,6 +265,80 @@ public sealed class MainViewModel : ObservableObject
     private async Task DisconnectAsync()
     {
         await _server.DisconnectActiveSessionAsync();
+    }
+
+    private async Task SendFileAsync()
+    {
+        var dialog = new Microsoft.Win32.OpenFileDialog { CheckFileExists = true, Multiselect = false, Title = "Send file to Android" };
+        if (dialog.ShowDialog() != true) return;
+        try
+        {
+            await _outgoingTransferQueue.EnqueueAsync(dialog.FileName);
+            OutgoingFileStatus = $"Queued: {Path.GetFileName(dialog.FileName)}";
+        }
+        catch (OperationCanceledException)
+        {
+        }
+        catch (Exception error)
+        {
+            OutgoingFileStatus = error.Message;
+        }
+    }
+
+    private void OnOutgoingFileTransferChanged(object? sender, OutgoingFileTransferChangedEventArgs args)
+    {
+        Dispatch(() =>
+        {
+            var transfer = args.Transfer;
+            OutgoingFileProgress = transfer.SizeBytes == 0 ? 100 : transfer.SentBytes * 100d / transfer.SizeBytes;
+            OutgoingFileStatus = $"{transfer.FileName}: {transfer.State} — {transfer.SentBytes:N0}/{transfer.SizeBytes:N0} bytes" +
+                (args.BytesPerSecond > 0 ? $" — {args.BytesPerSecond:N0} B/s" : string.Empty) +
+                (string.IsNullOrWhiteSpace(transfer.Error) ? string.Empty : $" — {transfer.Error}");
+        });
+    }
+
+    private async Task SendClipboardAsync()
+    {
+        if (!ClipboardSyncEnabled) { Status = "Enable clipboard synchronization first."; return; }
+        if (!System.Windows.Clipboard.ContainsText()) { Status = "Clipboard does not contain text."; return; }
+        await _sharingManager.SendClipboardAsync(System.Windows.Clipboard.GetText());
+    }
+
+    private async Task SendTextAsync()
+    {
+        var text = TextToShare.Trim();
+        if (text.Length == 0) return;
+        await _sharingManager.SendTextAsync(text);
+        TextToShare = "";
+    }
+
+    private Task OpenSharedLinkAsync(SharedTextItem? item)
+    {
+        if (item?.Kind == "url" && Uri.TryCreate(item.Text, UriKind.Absolute, out var uri) && uri.Scheme is "http" or "https")
+            Process.Start(new ProcessStartInfo(uri.AbsoluteUri) { UseShellExecute = true });
+        else if (item is not null)
+            System.Windows.Clipboard.SetText(item.Text);
+        return Task.CompletedTask;
+    }
+
+    private async Task StartFolderSyncAsync()
+    {
+        var dialog = new Microsoft.Win32.OpenFolderDialog { Title = "Select an explicitly shared folder", Multiselect = false };
+        if (dialog.ShowDialog() != true) return;
+        var syncId = await _folderSyncManager.StartAsync(dialog.FolderName);
+        FolderSyncStatus = $"Manifest sent ({syncId}). Waiting for remote manifest; no files have been changed.";
+    }
+
+    private async Task ApproveFolderSyncAsync()
+    {
+        if (_folderSyncId is null) return;
+        if (FolderConflicts.Any(item => string.IsNullOrWhiteSpace(item.Resolution)))
+        {
+            FolderSyncStatus = "Choose a resolution for every conflict before approval.";
+            return;
+        }
+        await _folderSyncManager.ApproveAsync(_folderSyncId,
+            FolderConflicts.ToDictionary(item => item.RelativePath, item => item.Resolution!, StringComparer.Ordinal));
     }
 
     private async Task LoadTrustedPhonesAsync()
@@ -428,6 +610,7 @@ public sealed class MainViewModel : ObservableObject
             ["dn"] = payload.WindowsDeviceName,
             ["pk"] = payload.WindowsIdentityPublicKey,
             ["fp"] = payload.WindowsIdentityFingerprint,
+            ["tlsfp"] = payload.TlsServerSpkiFingerprint,
             ["pmin"] = payload.ProtocolMin,
             ["pmax"] = payload.ProtocolMax,
         };
@@ -495,4 +678,14 @@ public sealed record TrustedPhoneViewModel
     {
         return value.Length <= 18 ? value : $"{value[..10]}...{value[^6..]}";
     }
+}
+
+public sealed class FolderConflictChoice : ObservableObject
+{
+    private string? _resolution;
+    public FolderConflictChoice(string relativePath) => RelativePath = relativePath;
+    public string RelativePath { get; }
+    public IReadOnlyList<string> Options { get; } =
+        [FolderConflictResolutions.KeepWindows, FolderConflictResolutions.KeepAndroid, FolderConflictResolutions.KeepBoth];
+    public string? Resolution { get => _resolution; set => SetProperty(ref _resolution, value); }
 }

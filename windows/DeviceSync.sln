@@ -16,6 +16,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceSync.Application.Test
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceSync.IntegrationTests", "tests\DeviceSync.IntegrationTests\DeviceSync.IntegrationTests.csproj", "{77777777-7777-7777-7777-777777777777}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Launch", "Launch", "{88888888-8888-8888-8888-888888888888}"
+	ProjectSection(SolutionItems) = preProject
+		Install-DeviceSync-Shortcut.ps1 = Install-DeviceSync-Shortcut.ps1
+		Run-DeviceSync-Latest.ps1 = Run-DeviceSync-Latest.ps1
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU

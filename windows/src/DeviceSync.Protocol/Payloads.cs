@@ -115,3 +115,165 @@ public sealed record AuthAcceptedPayload
 {
     public required string Status { get; init; }
 }
+
+public sealed record FileOfferPayload
+{
+    public required string TransferId { get; init; }
+    public required string FileName { get; init; }
+    public required long SizeBytes { get; init; }
+    public required string MimeType { get; init; }
+    public required string Sha256 { get; init; }
+    public required int ChunkSize { get; init; }
+    public string? FolderSyncId { get; init; }
+    public string? RelativePath { get; init; }
+    public bool ConflictCopy { get; init; }
+}
+
+public sealed record FileAcceptPayload
+{
+    public required string TransferId { get; init; }
+}
+
+public sealed record FileRejectPayload
+{
+    public required string TransferId { get; init; }
+    public required string Code { get; init; }
+    public string? Message { get; init; }
+}
+
+public sealed record FileChunkPayload
+{
+    public required string TransferId { get; init; }
+    public required int Index { get; init; }
+    public required long Offset { get; init; }
+    public required string Data { get; init; }
+    public string? ChunkSha256 { get; init; }
+}
+
+public sealed record FileChunkReceivedPayload
+{
+    public required string TransferId { get; init; }
+    public required int NextChunkIndex { get; init; }
+    public required long Offset { get; init; }
+}
+
+public sealed record FileResumeRequestPayload
+{
+    public required string TransferId { get; init; }
+    public required string FileName { get; init; }
+    public required long SizeBytes { get; init; }
+    public required string Sha256 { get; init; }
+    public required int ChunkSize { get; init; }
+    public string? FolderSyncId { get; init; }
+    public string? RelativePath { get; init; }
+    public bool ConflictCopy { get; init; }
+}
+
+public sealed record FileResumeAcceptedPayload
+{
+    public required string TransferId { get; init; }
+    public required int NextChunkIndex { get; init; }
+    public required long Offset { get; init; }
+}
+
+public sealed record ClipboardUpdatePayload
+{
+    public required string RevisionId { get; init; }
+    public required string SourceDeviceId { get; init; }
+    public required string ContentType { get; init; }
+    public required string Text { get; init; }
+    public required string CreatedAtUtc { get; init; }
+}
+
+public sealed record TextSharePayload
+{
+    public required string ItemId { get; init; }
+    public required string Kind { get; init; }
+    public required string Text { get; init; }
+    public required string CreatedAtUtc { get; init; }
+}
+
+public sealed record NotificationPostedPayload
+{
+    public required string NotificationId { get; init; }
+    public required string PackageName { get; init; }
+    public required string AppName { get; init; }
+    public required string Title { get; init; }
+    public required string Text { get; init; }
+    public required string PostedAtUtc { get; init; }
+}
+
+public sealed record NotificationRemovedPayload
+{
+    public required string NotificationId { get; init; }
+    public required string PackageName { get; init; }
+}
+
+public sealed record FolderManifestEntryPayload
+{
+    public required string RelativePath { get; init; }
+    public required long SizeBytes { get; init; }
+    public required string LastModifiedUtc { get; init; }
+    public required string Sha256 { get; init; }
+}
+
+public sealed record FolderManifestPayload
+{
+    public required string SyncId { get; init; }
+    public required string RootId { get; init; }
+    public required string GeneratedAtUtc { get; init; }
+    public required IReadOnlyList<FolderManifestEntryPayload> Entries { get; init; }
+}
+
+public sealed record FolderPlanOperationPayload
+{
+    public required string RelativePath { get; init; }
+    public required string Action { get; init; }
+    public string? Reason { get; init; }
+}
+
+public sealed record FolderPlanPayload
+{
+    public required string SyncId { get; init; }
+    public required IReadOnlyList<FolderPlanOperationPayload> Operations { get; init; }
+}
+
+public sealed record FolderConflictResolutionPayload
+{
+    public required string RelativePath { get; init; }
+    public required string Resolution { get; init; }
+}
+
+public sealed record FolderPlanApprovedPayload
+{
+    public required string SyncId { get; init; }
+    public required IReadOnlyList<FolderConflictResolutionPayload> ConflictResolutions { get; init; }
+}
+
+public sealed record FileCompletePayload
+{
+    public required string TransferId { get; init; }
+    public required int TotalChunks { get; init; }
+    public required long SizeBytes { get; init; }
+}
+
+public sealed record FileReceivedPayload
+{
+    public required string TransferId { get; init; }
+    public required long SizeBytes { get; init; }
+    public required string Sha256 { get; init; }
+    public required string SavedFileName { get; init; }
+}
+
+public sealed record FileCancelPayload
+{
+    public required string TransferId { get; init; }
+    public required string Reason { get; init; }
+}
+
+public sealed record FileErrorPayload
+{
+    public required string TransferId { get; init; }
+    public required string Code { get; init; }
+    public string? Message { get; init; }
+}
