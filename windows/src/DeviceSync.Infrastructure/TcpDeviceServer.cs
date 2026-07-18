@@ -21,6 +21,7 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
     private readonly ITlsCertificateProvider? _tlsCertificateProvider;
     private readonly WindowsFileTransferTransport? _outgoingFileTransferTransport;
     private readonly FeatureMessageTransport? _featureMessageTransport;
+    private readonly TransportSessionCoordinator? _sessionCoordinator;
     private readonly object _gate = new();
     private TcpListener? _listener;
     private CancellationTokenSource? _serverCts;
@@ -37,7 +38,8 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
         IncomingFileTransferManager? incomingFileTransferManager = null,
         ITlsCertificateProvider? tlsCertificateProvider = null,
         WindowsFileTransferTransport? outgoingFileTransferTransport = null,
-        FeatureMessageTransport? featureMessageTransport = null)
+        FeatureMessageTransport? featureMessageTransport = null,
+        TransportSessionCoordinator? sessionCoordinator = null)
     {
         _identityProvider = identityProvider;
         _pairingSessionManager = pairingSessionManager;
@@ -49,6 +51,7 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
         _tlsCertificateProvider = tlsCertificateProvider;
         _outgoingFileTransferTransport = outgoingFileTransferTransport;
         _featureMessageTransport = featureMessageTransport;
+        _sessionCoordinator = sessionCoordinator;
     }
 
     public int Port { get; private set; } = 54321;
@@ -181,7 +184,8 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
             _incomingFileTransferManager,
             transportStream,
             _outgoingFileTransferTransport,
-            _featureMessageTransport);
+            _featureMessageTransport,
+            _sessionCoordinator);
 
         session.SessionChanged += (_, args) => SessionChanged?.Invoke(this, args);
         session.SessionAccepted += (_, _) =>
@@ -227,7 +231,11 @@ public sealed class TcpDeviceServer : IDeviceServer, IAsyncDisposable
             return null;
         }
 
-        return new AuthHandshakeHandler(_identityProvider, _keyProvider, _trustedDeviceRepository);
+        return new AuthHandshakeHandler(
+            _identityProvider,
+            _keyProvider,
+            _trustedDeviceRepository,
+            pairingSessionManager: _pairingSessionManager);
     }
 
     public async ValueTask DisposeAsync()

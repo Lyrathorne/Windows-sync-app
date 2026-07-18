@@ -32,18 +32,12 @@ public sealed class LocalNetworkAddressProvider : ILocalNetworkAddressProvider
         var candidates = _interfaces()
             .Where(adapter => adapter.Status == OperationalStatus.Up)
             .Where(adapter => adapter.Type != NetworkInterfaceType.Loopback && adapter.Type != NetworkInterfaceType.Tunnel)
+            .Where(adapter => !IsVpnAdapter(adapter))
+            .Where(adapter => !IsUnsupportedVirtualAdapter(adapter))
             .SelectMany(adapter => adapter.UnicastAddresses
                 .Where(IsUsablePrivateIPv4)
                 .Select(address => new AddressCandidate(adapter, address)))
             .ToList();
-
-        var hasPhysicalLan = candidates.Any(candidate => !IsKnownVirtualAdapter(candidate.Adapter) && IsPreferredLanType(candidate.Adapter.Type));
-        if (hasPhysicalLan)
-        {
-            candidates = candidates
-                .Where(candidate => !IsKnownVirtualAdapter(candidate.Adapter))
-                .ToList();
-        }
 
         return candidates
             .OrderBy(candidate => Score(candidate.Adapter))
@@ -56,6 +50,27 @@ public sealed class LocalNetworkAddressProvider : ILocalNetworkAddressProvider
     public string? GetPrimaryLocalIPv4Address()
     {
         return GetLocalIPv4Addresses().FirstOrDefault();
+    }
+
+    public IReadOnlyList<DeviceTransportEndpoint> GetCandidateEndpoints(int port)
+    {
+        return _interfaces()
+            .Where(adapter => adapter.Status == OperationalStatus.Up)
+            .Where(adapter => adapter.Type is not (NetworkInterfaceType.Loopback or NetworkInterfaceType.Tunnel))
+            .Where(adapter => !IsVpnAdapter(adapter))
+            .Where(adapter => !IsUnsupportedVirtualAdapter(adapter))
+            .SelectMany(adapter => adapter.UnicastAddresses
+                .Where(IsUsableLocalAddress)
+                .Select(address => new DeviceTransportEndpoint(
+                    ClassifyTransport(adapter, address),
+                    address.ToString(),
+                    port,
+                    InterfaceId: PrivacySafeInterfaceId(adapter),
+                    IsRemembered: false)))
+            .OrderByDescending(endpoint => DeviceTransportProfile.For(endpoint.Kind).Priority)
+            .ThenBy(endpoint => endpoint.Address, StringComparer.Ordinal)
+            .DistinctBy(endpoint => (endpoint.Kind, endpoint.Address, endpoint.Port))
+            .ToArray();
     }
 
     private static IReadOnlyList<LocalNetworkInterfaceSnapshot> GetSystemInterfaces()
@@ -109,9 +124,73 @@ public sealed class LocalNetworkAddressProvider : ILocalNetworkAddressProvider
             (bytes[0] == 192 && bytes[1] == 168);
     }
 
+    private static bool IsUsableLocalAddress(IPAddress address)
+    {
+        if (address.AddressFamily == AddressFamily.InterNetwork) return IsUsablePrivateIPv4(address);
+        return address.AddressFamily == AddressFamily.InterNetworkV6 &&
+            address.IsIPv6LinkLocal &&
+            !IPAddress.IsLoopback(address);
+    }
+
+    private static DeviceTransportKind ClassifyTransport(
+        LocalNetworkInterfaceSnapshot adapter,
+        IPAddress address)
+    {
+        var text = $"{adapter.Name} {adapter.Description}";
+        if (text.Contains("USB", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("Remote NDIS", StringComparison.OrdinalIgnoreCase) ||
+            address.ToString().StartsWith("192.168.42.", StringComparison.Ordinal))
+            return DeviceTransportKind.UsbTethering;
+        if (text.Contains("Wi-Fi Direct", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("Mobile Hotspot", StringComparison.OrdinalIgnoreCase) ||
+            address.ToString().StartsWith("192.168.137.", StringComparison.Ordinal))
+            return DeviceTransportKind.Hotspot;
+        return DeviceTransportKind.Lan;
+    }
+
+    private static bool IsVpnAdapter(LocalNetworkInterfaceSnapshot adapter)
+    {
+        var text = $"{adapter.Name} {adapter.Description}";
+        return text.Contains("VPN", StringComparison.OrdinalIgnoreCase)
+            || text.Contains(" TUN", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("TAP-", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("TAP Adapter", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Wintun", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Tailscale", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("WireGuard", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("OpenVPN", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("ProtonVPN", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("NordLynx", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Mullvad", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("ZeroTier", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Hamachi", StringComparison.OrdinalIgnoreCase)
+            || text.Contains("Throne", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string PrivacySafeInterfaceId(LocalNetworkInterfaceSnapshot adapter)
+    {
+        var value = $"{adapter.Type}|{adapter.Name}";
+        var hash = System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(value));
+        return Convert.ToHexString(hash.AsSpan(0, 6));
+    }
+
     private static bool IsKnownVirtualAdapter(LocalNetworkInterfaceSnapshot adapter)
     {
         var text = $"{adapter.Name} {adapter.Description}";
+        return ContainsKnownVirtualMarker(text);
+    }
+
+    private static bool IsUnsupportedVirtualAdapter(LocalNetworkInterfaceSnapshot adapter)
+    {
+        var text = $"{adapter.Name} {adapter.Description}";
+        if (text.Contains("Wi-Fi Direct", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("Mobile Hotspot", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("Remote NDIS", StringComparison.OrdinalIgnoreCase) ||
+            text.Contains("USB", StringComparison.OrdinalIgnoreCase))
+        {
+            return false;
+        }
+
         return ContainsKnownVirtualMarker(text);
     }
 

@@ -35,6 +35,16 @@ public interface ILocalNetworkAddressProvider
 {
     IReadOnlyList<string> GetLocalIPv4Addresses();
     string? GetPrimaryLocalIPv4Address();
+    IReadOnlyList<DeviceTransportEndpoint> GetCandidateEndpoints(int port) =>
+        GetLocalIPv4Addresses()
+            .Select(address => new DeviceTransportEndpoint(DeviceTransportKind.Lan, address, port))
+            .ToArray();
+}
+
+public interface ILanBeaconPublisher
+{
+    Task StartAsync(PublishedService service, CancellationToken cancellationToken = default);
+    Task StopAsync(CancellationToken cancellationToken = default);
 }
 
 public interface IDiscoveryControl

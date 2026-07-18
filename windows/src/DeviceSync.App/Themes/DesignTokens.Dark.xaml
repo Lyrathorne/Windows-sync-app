@@ -1,0 +1,19 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Color x:Key="Ds.Color.Background">#101513</Color>
+    <Color x:Key="Ds.Color.Surface">#18201D</Color>
+    <Color x:Key="Ds.Color.SurfaceVariant">#25302C</Color>
+    <Color x:Key="Ds.Color.SurfaceVariantHover">#303D38</Color>
+    <Color x:Key="Ds.Color.SurfaceVariantPressed">#394842</Color>
+    <Color x:Key="Ds.Color.OnSurface">#E4ECE8</Color>
+    <Color x:Key="Ds.Color.OnSurfaceMuted">#B7C9C3</Color>
+    <Color x:Key="Ds.Color.Outline">#899B95</Color>
+    <Color x:Key="Ds.Color.Primary">#8BD8C4</Color>
+    <Color x:Key="Ds.Color.PrimaryHover">#A8E7D6</Color>
+    <Color x:Key="Ds.Color.PrimaryPressed">#6FC1AD</Color>
+    <Color x:Key="Ds.Color.OnPrimary">#00382F</Color>
+    <Color x:Key="Ds.Color.Connected">#66D69E</Color>
+    <Color x:Key="Ds.Color.Syncing">#F4C95D</Color>
+    <Color x:Key="Ds.Color.Offline">#AAB8B3</Color>
+    <Color x:Key="Ds.Color.Error">#FFB4AB</Color>
+    <Color x:Key="Ds.Color.Attention">#FFB86B</Color>
+</ResourceDictionary>

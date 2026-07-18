@@ -20,6 +20,7 @@ public sealed class IncomingFileTransferManager
     private readonly TimeProvider _timeProvider;
     private readonly IIncomingTransferCheckpointStore? _checkpointStore;
     private readonly IFolderFileTransferAuthorizer? _folderAuthorizer;
+    private readonly IIncomingFileTransferGuard? _transferGuard;
     private readonly SemaphoreSlim _gate = new(1, 1);
     private readonly HashSet<string> _seenTransferIds = new(StringComparer.Ordinal);
     private readonly Dictionary<string, FileTransferResponse> _completedResponses = new(StringComparer.Ordinal);
@@ -30,13 +31,15 @@ public sealed class IncomingFileTransferManager
         IIncomingFileTransferDecisionService decisionService,
         TimeProvider? timeProvider = null,
         IIncomingTransferCheckpointStore? checkpointStore = null,
-        IFolderFileTransferAuthorizer? folderAuthorizer = null)
+        IFolderFileTransferAuthorizer? folderAuthorizer = null,
+        IIncomingFileTransferGuard? transferGuard = null)
     {
         _storage = storage;
         _decisionService = decisionService;
         _timeProvider = timeProvider ?? TimeProvider.System;
         _checkpointStore = checkpointStore;
         _folderAuthorizer = folderAuthorizer;
+        _transferGuard = transferGuard;
     }
 
     public IncomingFileTransfer? ActiveTransfer => _context?.Transfer;
@@ -67,6 +70,11 @@ public sealed class IncomingFileTransferManager
             if (validationError is not null)
             {
                 return Reject(offer.TransferId, validationError.Value.Code, validationError.Value.Message);
+            }
+            if (_transferGuard is not null &&
+                !await _transferGuard.IsTransferAllowedAsync(senderDeviceId, cancellationToken).ConfigureAwait(false))
+            {
+                return Reject(offer.TransferId, "TRUST_REQUIRED", "The sender is no longer trusted.");
             }
             if (!_seenTransferIds.Add(offer.TransferId))
             {
@@ -184,6 +192,11 @@ public sealed class IncomingFileTransferManager
             {
                 return Error(chunk.TransferId, "invalid_state", "The transfer is not accepting chunks.");
             }
+            if (_transferGuard is not null &&
+                !await _transferGuard.IsTransferAllowedAsync(senderDeviceId, cancellationToken).ConfigureAwait(false))
+            {
+                return await FailAndReturnLockedAsync(context, "TRUST_REVOKED", "The sender is no longer trusted.").ConfigureAwait(false);
+            }
 
             if (context.Transfer.State is not (IncomingFileTransferState.Accepted or IncomingFileTransferState.Receiving))
             {
@@ -283,6 +296,11 @@ public sealed class IncomingFileTransferManager
             if (context is null || context.Stream is null || context.Hash is null || context.Reservation is null)
             {
                 return Error(complete.TransferId, "invalid_state", "The transfer cannot be completed.");
+            }
+            if (_transferGuard is not null &&
+                !await _transferGuard.IsTransferAllowedAsync(senderDeviceId, cancellationToken).ConfigureAwait(false))
+            {
+                return await FailAndReturnLockedAsync(context, "TRUST_REVOKED", "The sender is no longer trusted.").ConfigureAwait(false);
             }
 
             if (context.Transfer.ReceivedBytes != context.Transfer.SizeBytes)
@@ -542,6 +560,12 @@ public sealed class IncomingFileTransferManager
         if (string.IsNullOrWhiteSpace(offer.MimeType) || !TryDecodeSha256(offer.Sha256))
         {
             return ("invalid_metadata", "MIME type or SHA-256 is invalid.");
+        }
+
+        var safetyError = IncomingFileSafetyClassifier.Validate(offer.FileName, offer.MimeType);
+        if (safetyError is not null)
+        {
+            return (safetyError, "This file type is blocked for safety.");
         }
 
         if (string.IsNullOrWhiteSpace(offer.FileName) || Path.IsPathRooted(offer.FileName))

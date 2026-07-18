@@ -7,10 +7,8 @@ public partial class IncomingFileWindow
         InitializeComponent();
         Closing += (_, _) =>
         {
-            if (DataContext is IncomingFileViewModel viewModel && viewModel.RejectCommand.CanExecute(null))
-            {
-                viewModel.RejectCommand.Execute(null);
-            }
+            if (DataContext is IncomingFileViewModel viewModel)
+                viewModel.OnWindowClosing();
         };
     }
 }

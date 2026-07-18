@@ -8,7 +8,12 @@ namespace DeviceSync.Infrastructure;
 
 public sealed class ClientSession : IDeviceMessageWriter
 {
-    private readonly TcpClient _client;
+    private readonly Stream _stream;
+    private readonly Func<ValueTask> _closeTransport;
+    private readonly DeviceTransportEndpoint _endpoint;
+    private readonly DeviceTransportProfile _transportProfile;
+    private readonly RecentMessageDeduplicator _deduplicator;
+    private readonly TransportSessionCoordinator? _sessionCoordinator;
     private readonly ConnectionHandshakeHandler _handshakeHandler;
     private readonly AuthHandshakeHandler? _authHandshakeHandler;
     private readonly PairingRequestHandler? _pairingRequestHandler;
@@ -16,10 +21,15 @@ public sealed class ClientSession : IDeviceMessageWriter
     private readonly DeviceSessionRegistry _registry;
     private readonly ILogger _logger;
     private readonly IncomingFileTransferManager? _incomingFileTransferManager;
-    private readonly Stream? _transportStream;
     private readonly WindowsFileTransferTransport? _outgoingFileTransferTransport;
     private readonly FeatureMessageTransport? _featureMessageTransport;
-    private readonly Channel<ProtocolMessage> _outgoing = Channel.CreateUnbounded<ProtocolMessage>();
+    private readonly Channel<ProtocolMessage> _outgoing = Channel.CreateBounded<ProtocolMessage>(
+        new BoundedChannelOptions(128)
+        {
+            FullMode = BoundedChannelFullMode.Wait,
+            SingleReader = true,
+            SingleWriter = false,
+        });
     private readonly CancellationTokenSource _sessionCts = new();
     private int _cleanupStarted;
     private string? _deviceId;
@@ -37,9 +47,53 @@ public sealed class ClientSession : IDeviceMessageWriter
         IncomingFileTransferManager? incomingFileTransferManager = null,
         Stream? transportStream = null,
         WindowsFileTransferTransport? outgoingFileTransferTransport = null,
-        FeatureMessageTransport? featureMessageTransport = null)
+        FeatureMessageTransport? featureMessageTransport = null,
+        TransportSessionCoordinator? sessionCoordinator = null)
+        : this(
+            transportStream ?? client.GetStream(),
+            () =>
+            {
+                client.Close();
+                return ValueTask.CompletedTask;
+            },
+            new DeviceTransportEndpoint(
+                DeviceTransportKind.Lan,
+                client.Client.RemoteEndPoint?.ToString() ?? "unknown"),
+            handshakeHandler,
+            authHandshakeHandler,
+            pairingRequestHandler,
+            heartbeatResponder,
+            registry,
+            logger,
+            incomingFileTransferManager,
+            outgoingFileTransferTransport,
+            featureMessageTransport,
+            sessionCoordinator: sessionCoordinator)
     {
-        _client = client;
+    }
+
+    public ClientSession(
+        Stream stream,
+        Func<ValueTask> closeTransport,
+        DeviceTransportEndpoint endpoint,
+        ConnectionHandshakeHandler handshakeHandler,
+        AuthHandshakeHandler? authHandshakeHandler,
+        PairingRequestHandler? pairingRequestHandler,
+        HeartbeatResponder heartbeatResponder,
+        DeviceSessionRegistry registry,
+        ILogger logger,
+        IncomingFileTransferManager? incomingFileTransferManager = null,
+        WindowsFileTransferTransport? outgoingFileTransferTransport = null,
+        FeatureMessageTransport? featureMessageTransport = null,
+        RecentMessageDeduplicator? deduplicator = null,
+        TransportSessionCoordinator? sessionCoordinator = null)
+    {
+        _stream = stream;
+        _closeTransport = closeTransport;
+        _endpoint = endpoint;
+        _transportProfile = DeviceTransportProfile.For(endpoint.Kind);
+        _deduplicator = deduplicator ?? new RecentMessageDeduplicator();
+        _sessionCoordinator = sessionCoordinator;
         _handshakeHandler = handshakeHandler;
         _authHandshakeHandler = authHandshakeHandler;
         _pairingRequestHandler = pairingRequestHandler;
@@ -47,20 +101,21 @@ public sealed class ClientSession : IDeviceMessageWriter
         _registry = registry;
         _logger = logger;
         _incomingFileTransferManager = incomingFileTransferManager;
-        _transportStream = transportStream;
         _outgoingFileTransferTransport = outgoingFileTransferTransport;
         _featureMessageTransport = featureMessageTransport;
     }
 
     public event EventHandler<DeviceSessionChangedEventArgs>? SessionChanged;
     public event EventHandler? SessionAccepted;
+    public string? DeviceId => _deviceId;
+    public DeviceTransportKind TransportKind => _endpoint.Kind;
 
     public async Task RunAsync(CancellationToken serverCancellationToken)
     {
         using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(serverCancellationToken, _sessionCts.Token);
         try
         {
-            await using var stream = _transportStream ?? _client.GetStream();
+            await using var stream = _stream;
             var reader = new ProtocolFrameReader(stream);
             var writer = new ProtocolFrameWriter(stream);
 
@@ -88,27 +143,36 @@ public sealed class ClientSession : IDeviceMessageWriter
                 return;
             }
 
-            if (!_registry.TryReplaceOrAdd(handshake.Session, out var replaced))
-            {
-                throw new ProtocolException("A different Android device is already connected.");
-            }
-
-            if (replaced is not null)
-            {
-                _logger.LogInformation("Replacing active session for {DeviceId}", replaced.DeviceId);
-            }
-
             _deviceId = handshake.Session.DeviceId;
             _windowsDeviceId = handshake.Accepted.SenderDeviceId;
-            _registeredSession = handshake.Session;
+            _registeredSession = handshake.Session with
+            {
+                TransportKind = _endpoint.Kind,
+                IsSlowTransport = _transportProfile.IsSlow,
+                TransportAddress = _endpoint.Address,
+                Capabilities = handshake.Session.Capabilities
+                    .Where(capability => !_transportProfile.DisabledCapabilities.Contains(capability))
+                    .ToArray(),
+            };
+            if (_sessionCoordinator is not null)
+            {
+                if (!_sessionCoordinator.TryActivate(this, out var replacedSession))
+                    throw new ProtocolException("A higher-priority transport is already active.");
+                if (replacedSession is not null && !ReferenceEquals(replacedSession, this))
+                    _ = replacedSession.StopAsync();
+            }
+            if (!_registry.TryReplaceOrAdd(_registeredSession, out var replaced))
+                throw new ProtocolException("A different Android device is already connected.");
+            if (replaced is not null)
+                _logger.LogInformation("Replacing active session for {DeviceId}", replaced.DeviceId);
             if (_incomingFileTransferManager is not null)
             {
                 _incomingFileTransferManager.ResponseRequested += OnFileTransferResponseRequested;
             }
             SessionAccepted?.Invoke(this, EventArgs.Empty);
             _outgoingFileTransferTransport?.Attach(this, _windowsDeviceId!, _deviceId!, _registeredSession?.Capabilities ?? []);
-            _featureMessageTransport?.Attach(this, _windowsDeviceId!, _deviceId!);
-            SessionChanged?.Invoke(this, new DeviceSessionChangedEventArgs(handshake.Session));
+            _featureMessageTransport?.Attach(this, _windowsDeviceId!, _deviceId!, _registeredSession?.Capabilities ?? []);
+            SessionChanged?.Invoke(this, new DeviceSessionChangedEventArgs(_registeredSession));
             await writer.WriteAsync(handshake.Accepted, linkedCts.Token).ConfigureAwait(false);
 
             var writerTask = WriterLoopAsync(writer, linkedCts.Token);
@@ -138,7 +202,7 @@ public sealed class ClientSession : IDeviceMessageWriter
     public async Task StopAsync(CancellationToken cancellationToken = default)
     {
         _sessionCts.Cancel();
-        _client.Close();
+        await _closeTransport().ConfigureAwait(false);
         await CleanupAsync().ConfigureAwait(false);
         await Task.CompletedTask;
     }
@@ -232,6 +296,13 @@ public sealed class ClientSession : IDeviceMessageWriter
         {
             while (!_pairingRequestHandler.CanBuildAccepted(confirmPayload.SessionId))
             {
+                if (!_pairingRequestHandler.CanContinueWaitingForAccepted(confirmPayload.SessionId))
+                {
+                    await writer.WriteAsync(
+                        _pairingRequestHandler.BuildPairingWaitEnded(confirm),
+                        cancellationToken).ConfigureAwait(false);
+                    return;
+                }
                 await Task.Delay(200, cancellationToken).ConfigureAwait(false);
             }
 
@@ -264,6 +335,12 @@ public sealed class ClientSession : IDeviceMessageWriter
             {
                 continue;
             }
+            if (!_deduplicator.TryAccept(message.SenderDeviceId, message.MessageId, DateTimeOffset.UtcNow))
+            {
+                if (message.RequiresAcknowledgement)
+                    await EnqueueAsync(BuildAck(message, "duplicate"), cancellationToken).ConfigureAwait(false);
+                continue;
+            }
 
             switch (message.Type)
             {
@@ -280,11 +357,27 @@ public sealed class ClientSession : IDeviceMessageWriter
                 case ProtocolMessageTypes.FileOffer:
                     if (_incomingFileTransferManager is not null)
                     {
+                        var offer = ProtocolSerializer.DecodePayload<FileOfferPayload>(message.Payload);
+                        if (offer.SizeBytes > _transportProfile.MaximumFileBytes)
+                        {
+                            await ProcessRequiredFileResponseAsync(
+                                message,
+                                Task.FromResult(new FileTransferResponse(
+                                    ProtocolMessageTypes.FileReject,
+                                    ProtocolSerializer.PayloadToJson(new FileRejectPayload
+                                    {
+                                        TransferId = offer.TransferId,
+                                        Code = "transport_file_too_large",
+                                        Message = $"This transport supports files up to {_transportProfile.MaximumFileBytes / (1024 * 1024)} MiB.",
+                                    }))),
+                                cancellationToken).ConfigureAwait(false);
+                            break;
+                        }
                         _ = ProcessFileResponseAsync(
                             message,
                             _incomingFileTransferManager.HandleOfferAsync(
                                 message.SenderDeviceId,
-                                ProtocolSerializer.DecodePayload<FileOfferPayload>(message.Payload),
+                                offer,
                                 cancellationToken,
                                 resumable: _registeredSession?.Capabilities.Contains(SupportedCapabilities.FileTransferV2) == true),
                             cancellationToken);
@@ -347,13 +440,26 @@ public sealed class ClientSession : IDeviceMessageWriter
                 case ProtocolMessageTypes.ClipboardUpdate:
                 case ProtocolMessageTypes.TextShare:
                 case ProtocolMessageTypes.NotificationPosted:
+                case ProtocolMessageTypes.NotificationUpdated:
                 case ProtocolMessageTypes.NotificationRemoved:
+                case ProtocolMessageTypes.NotificationActionInvoke:
+                case ProtocolMessageTypes.NotificationActionResult:
                 case ProtocolMessageTypes.FolderManifest:
                         case ProtocolMessageTypes.FolderPlan:
                         case ProtocolMessageTypes.FolderPlanApproved:
                 case ProtocolMessageTypes.FolderCancel:
                 case ProtocolMessageTypes.FolderError:
+                case ProtocolMessageTypes.CatalogPage:
+                case ProtocolMessageTypes.CatalogChanged:
+                case ProtocolMessageTypes.CatalogThumbnailResponse:
+                case ProtocolMessageTypes.CatalogPermission:
+                case ProtocolMessageTypes.CatalogError:
+                case ProtocolMessageTypes.CatalogCancel:
                     _featureMessageTransport?.Route(message.Type, message.Payload);
+                    if (message.RequiresAcknowledgement)
+                    {
+                        await EnqueueAsync(BuildAck(message, "processed"), cancellationToken).ConfigureAwait(false);
+                    }
                     break;
                 case ProtocolMessageTypes.MessageAck:
                 case ProtocolMessageTypes.ConnectionPong:
@@ -493,7 +599,8 @@ public sealed class ClientSession : IDeviceMessageWriter
         }
         _outgoingFileTransferTransport?.Detach(this);
         _featureMessageTransport?.Detach(this);
-        _client.Close();
+        _sessionCoordinator?.Release(this);
+        await _closeTransport().ConfigureAwait(false);
         if (_registeredSession is not null)
         {
             _registry.Remove(_registeredSession);

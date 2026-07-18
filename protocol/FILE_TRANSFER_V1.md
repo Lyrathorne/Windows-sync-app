@@ -173,10 +173,19 @@ it send `file.received`.
 
 ## Security
 
-SHA-256 protects integrity, not confidentiality. Until the authenticated
-connection is protected by TLS, names and file contents are visible on the
-local network. MIME type and extension are untrusted and must not cause Windows
-to execute or open the file automatically.
+SHA-256 protects integrity but does not replace the mandatory pinned TLS
+transport. MIME type and extension are untrusted and must not cause Windows to
+execute or open the file automatically.
+
+## Trust and automatic acceptance
+
+V1 defaults to an explicit receiver decision. The optional automatic-accept policy
+reuses these messages only after pinned TLS, application authentication,
+capability checks, and the per-device authorization policy in
+`../docs/TRUST_AND_AUTOMATION_POLICY.md`. Automatic acceptance never removes
+size, filename, destination, free-space, `.part`, or SHA-256 checks and never
+opens a received file automatically. Implementation details and blocked types are in
+`../docs/AUTOMATIC_FILE_RECEIVE.md`.
 
 ## Test vector
 

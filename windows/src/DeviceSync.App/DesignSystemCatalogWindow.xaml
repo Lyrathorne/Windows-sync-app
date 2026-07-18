@@ -1,0 +1,85 @@
+<Window x:Class="DeviceSync.App.DesignSystemCatalogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:automation="clr-namespace:System.Windows.Automation;assembly=PresentationCore"
+        Title="DeviceSync component catalog" Width="760" Height="760" MinWidth="520" MinHeight="520"
+        Style="{StaticResource Ds.Window}">
+    <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <StackPanel Margin="24">
+            <TextBlock Text="DeviceSync design system" Style="{StaticResource Ds.Text.TitleLarge}" />
+            <TextBlock Text="Development catalog — not part of production navigation" Margin="0,4,0,24" Style="{StaticResource Ds.Text.Muted}" />
+
+            <TextBlock Text="Status" Style="{StaticResource Ds.Text.Title}" />
+            <WrapPanel Margin="0,12,0,24">
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,8" automation:AutomationProperties.Name="Connected status">
+                    <Ellipse Width="10" Height="10" Fill="{DynamicResource Ds.Brush.Connected}" Margin="0,0,8,0" />
+                    <TextBlock Text="Connected" Style="{StaticResource Ds.Text.Body}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,8" automation:AutomationProperties.Name="Syncing status">
+                    <Ellipse Width="10" Height="10" Fill="{DynamicResource Ds.Brush.Syncing}" Margin="0,0,8,0" />
+                    <TextBlock Text="Syncing" Style="{StaticResource Ds.Text.Body}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,8" automation:AutomationProperties.Name="Offline status">
+                    <Ellipse Width="10" Height="10" Fill="{DynamicResource Ds.Brush.Offline}" Margin="0,0,8,0" />
+                    <TextBlock Text="Offline" Style="{StaticResource Ds.Text.Body}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,8" automation:AutomationProperties.Name="Error status">
+                    <Ellipse Width="10" Height="10" Fill="{DynamicResource Ds.Brush.Error}" Margin="0,0,8,0" />
+                    <TextBlock Text="Error" Style="{StaticResource Ds.Text.Body}" />
+                </StackPanel>
+                <StackPanel Orientation="Horizontal" Margin="0,0,20,8" automation:AutomationProperties.Name="Attention status">
+                    <Ellipse Width="10" Height="10" Fill="{DynamicResource Ds.Brush.Attention}" Margin="0,0,8,0" />
+                    <TextBlock Text="Attention" Style="{StaticResource Ds.Text.Body}" />
+                </StackPanel>
+            </WrapPanel>
+
+            <TextBlock Text="Actions" Style="{StaticResource Ds.Text.Title}" />
+            <WrapPanel Margin="0,12,0,24">
+                <Button Content="Send file" Style="{StaticResource Ds.Button.Primary}" Margin="0,0,8,8" />
+                <Button Content="Open folder" Style="{StaticResource Ds.Button.Secondary}" Margin="0,0,8,8" />
+                <Button Content="Unavailable" Style="{StaticResource Ds.Button.Primary}" IsEnabled="False" Margin="0,0,8,8" />
+            </WrapPanel>
+
+            <TextBlock Text="Cards" Style="{StaticResource Ds.Text.Title}" />
+            <UniformGrid Columns="2" Margin="0,12,0,24">
+                <Border Style="{StaticResource Ds.Card}" Margin="0,0,6,8" automation:AutomationProperties.Name="Device card, Pixel 9, connected">
+                    <StackPanel>
+                        <TextBlock Text="Pixel 9" Style="{StaticResource Ds.Text.Title}" />
+                        <TextBlock Text="Connected · just now" Style="{StaticResource Ds.Text.Muted}" />
+                        <TextBlock Text="Clipboard and files are ready" Margin="0,12,0,0" Style="{StaticResource Ds.Text.Body}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Ds.Card}" Margin="6,0,0,8" automation:AutomationProperties.Name="File transfer card, 68 percent">
+                    <StackPanel>
+                        <TextBlock Text="holiday-photo.jpg" Style="{StaticResource Ds.Text.Title}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="6.8 MB of 10 MB" Style="{StaticResource Ds.Text.Muted}" />
+                        <ProgressBar Value="68" Margin="0,16,0,0" Style="{StaticResource Ds.Progress}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Ds.Card}" Margin="0,0,6,8" automation:AutomationProperties.Name="Clipboard card">
+                    <StackPanel>
+                        <TextBlock Text="Clipboard" Style="{StaticResource Ds.Text.Title}" />
+                        <TextBlock Text="A multiline clipboard preview wraps instead of being clipped into one unusable row." MaxHeight="72" Margin="0,8,0,0" Style="{StaticResource Ds.Text.Body}" />
+                        <TextBlock Text="From phone · 2 min ago" Margin="0,8,0,0" Style="{StaticResource Ds.Text.Muted}" />
+                    </StackPanel>
+                </Border>
+                <Border Style="{StaticResource Ds.Card}" Margin="6,0,0,8" automation:AutomationProperties.Name="Notification card">
+                    <StackPanel>
+                        <TextBlock Text="Messages · now" Style="{StaticResource Ds.Text.Muted}" />
+                        <TextBlock Text="New message" Margin="0,4,0,0" Style="{StaticResource Ds.Text.Title}" />
+                        <TextBlock Text="Notification content remains readable with larger text." Margin="0,6,0,0" Style="{StaticResource Ds.Text.Body}" />
+                    </StackPanel>
+                </Border>
+            </UniformGrid>
+
+            <TextBlock Text="Feedback" Style="{StaticResource Ds.Text.Title}" />
+            <Border Style="{StaticResource Ds.Card}" Margin="0,12,0,8">
+                <StackPanel>
+                    <TextBlock Text="Loading devices…" Style="{StaticResource Ds.Text.Muted}" />
+                    <Border Style="{StaticResource Ds.Skeleton}" Width="240" HorizontalAlignment="Left" Margin="0,12,0,8" />
+                    <Border Style="{StaticResource Ds.Skeleton}" Width="160" HorizontalAlignment="Left" />
+                </StackPanel>
+            </Border>
+        </StackPanel>
+    </ScrollViewer>
+</Window>

@@ -6,12 +6,15 @@
         Height="640"
         MinWidth="640"
         MinHeight="520"
-        SnapsToDevicePixels="True">
+        SnapsToDevicePixels="True"
+        Style="{StaticResource Ds.Window}"
+        KeyboardNavigation.TabNavigation="Cycle">
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
     </Window.Resources>
 
-    <Grid Margin="24">
+    <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
+    <Grid Margin="24" MinWidth="580">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="16" />
@@ -35,6 +38,8 @@
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="8" />
                     <RowDefinition Height="Auto" />
@@ -73,6 +78,8 @@
                     <RowDefinition Height="Auto" />
                     <RowDefinition Height="8" />
                     <RowDefinition Height="Auto" />
+                    <RowDefinition Height="8" />
+                    <RowDefinition Height="Auto" />
                 </Grid.RowDefinitions>
 
                 <TextBlock Text="Discovery" FontWeight="SemiBold" />
@@ -87,6 +94,8 @@
                 <TextBlock Grid.Row="8" Grid.Column="1" Text="{Binding TcpEndpoint}" />
                 <TextBlock Grid.Row="10" Text="Last publish/error" FontWeight="SemiBold" />
                 <TextBlock Grid.Row="10" Grid.Column="1" Text="{Binding DiscoveryLastPublishedAtUtc}" TextWrapping="Wrap" />
+                <TextBlock Grid.Row="12" Text="Interfaces" FontWeight="SemiBold" />
+                <TextBlock Grid.Row="12" Grid.Column="1" Text="{Binding NetworkInterfaceSummary}" TextWrapping="Wrap" />
             </Grid>
         </Border>
 
@@ -112,6 +121,8 @@
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="8" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="8" />
+                        <RowDefinition Height="Auto" />
                     </Grid.RowDefinitions>
                     <TextBlock Text="Name" FontWeight="SemiBold" />
                     <TextBlock Grid.Column="1" Text="{Binding ConnectedDeviceName}" TextWrapping="Wrap" />
@@ -119,6 +130,8 @@
                     <TextBlock Grid.Row="2" Grid.Column="1" Text="{Binding ConnectedDeviceId}" TextWrapping="Wrap" />
                     <TextBlock Grid.Row="4" Text="Connected at" FontWeight="SemiBold" />
                     <TextBlock Grid.Row="4" Grid.Column="1" Text="{Binding ConnectedAtUtc}" TextWrapping="Wrap" />
+                    <TextBlock Grid.Row="6" Text="Transport" FontWeight="SemiBold" />
+                    <TextBlock Grid.Row="6" Grid.Column="1" Text="{Binding ConnectedTransport}" TextWrapping="Wrap" />
                 </Grid>
 
                 <TextBlock Grid.Row="3" Text="Trusted phones" FontSize="16" FontWeight="SemiBold" />
@@ -151,13 +164,27 @@
             </Grid>
         </Border>
 
-        <DockPanel Grid.Row="7" Margin="0,16,0,0" LastChildFill="False">
-            <StackPanel DockPanel.Dock="Left" Width="260">
+        <Grid Grid.Row="7" Margin="0,16,0,0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260" />
+                <ColumnDefinition Width="16" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
                 <CheckBox Content="Clipboard sync (opt-in)" IsChecked="{Binding ClipboardSyncEnabled}" />
+                <CheckBox Content="Allow automatic clipboard for this phone" IsChecked="{Binding ClipboardDeviceEnabled}"
+                          IsEnabled="{Binding HasConnectedClipboardDevice}" Margin="0,4,0,0" />
+                <CheckBox Content="Enable automatic file receive" IsChecked="{Binding AutomaticFileReceiveEnabled}" Margin="0,4,0,0" />
+                <ComboBox SelectedIndex="{Binding IncomingFileReceiveModeIndex}" IsEnabled="{Binding CanConfigureFileAutomation}" Margin="0,4,0,0">
+                    <ComboBoxItem Content="Always ask" />
+                    <ComboBoxItem Content="Automatic up to limit" />
+                    <ComboBoxItem Content="Automatic known types" />
+                    <ComboBoxItem Content="Never receive" />
+                </ComboBox>
                 <CheckBox Content="Start with Windows" IsChecked="{Binding StartWithWindows}" />
                 <DockPanel Margin="0,6,0,0">
                     <Button DockPanel.Dock="Right" Content="Send" Width="52" Command="{Binding SendTextCommand}" />
-                    <TextBox Text="{Binding TextToShare, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" />
+                    <TextBox Text="{Binding TextToShare, UpdateSourceTrigger=PropertyChanged}" Margin="0,0,6,0" AutomationProperties.Name="Text to send" />
                 </DockPanel>
                 <Button Content="Send clipboard now" Margin="0,6,0,0" Command="{Binding SendClipboardCommand}" />
                 <Button Content="Select folder to compare" Margin="0,6,0,0" Command="{Binding StartFolderSyncCommand}" />
@@ -183,19 +210,90 @@
                         </DataTemplate>
                     </ItemsControl.ItemTemplate>
                 </ItemsControl>
-                <ItemsControl ItemsSource="{Binding Notifications}" Margin="0,6,0,0">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <TextBlock Text="{Binding Title}" ToolTip="{Binding Text}" TextTrimming="CharacterEllipsis" />
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                <GroupBox Header="Android notifications" Margin="0,10,0,0">
+                    <StackPanel Margin="8">
+                        <TextBlock Text="{Binding NotificationStatus}" TextWrapping="Wrap"
+                                   Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                        <WrapPanel Margin="0,6,0,6">
+                            <CheckBox Content="System notifications"
+                                      IsChecked="{Binding NotificationToastsEnabled}"
+                                      Margin="0,0,12,0" />
+                            <CheckBox Content="Hide sensitive text while locked"
+                                      IsChecked="{Binding HideSensitiveNotificationsWhenLocked}" />
+                        </WrapPanel>
+                        <WrapPanel Margin="0,0,0,6">
+                            <TextBlock Text="Quiet hours" VerticalAlignment="Center" Margin="0,0,6,0" />
+                            <TextBox Text="{Binding NotificationQuietHoursStart, UpdateSourceTrigger=LostFocus}"
+                                     Width="52" ToolTip="Start, for example 22:00" />
+                            <TextBlock Text="–" VerticalAlignment="Center" Margin="5,0" />
+                            <TextBox Text="{Binding NotificationQuietHoursEnd, UpdateSourceTrigger=LostFocus}"
+                                     Width="52" ToolTip="End, for example 07:00" />
+                            <Button Content="Clear history" Margin="12,0,0,0"
+                                    Command="{Binding ClearNotificationHistoryCommand}" />
+                        </WrapPanel>
+                        <ItemsControl ItemsSource="{Binding BlockedNotificationApps}" Margin="0,0,0,6">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <DockPanel Margin="0,2">
+                                        <Button DockPanel.Dock="Right" Content="Allow"
+                                                Command="{Binding DataContext.UnblockNotificationAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                CommandParameter="{Binding}" />
+                                        <TextBlock Text="{Binding}" VerticalAlignment="Center"
+                                                   TextTrimming="CharacterEllipsis" />
+                                    </DockPanel>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                        <ItemsControl ItemsSource="{Binding NotificationsView}">
+                            <ItemsControl.GroupStyle>
+                                <GroupStyle>
+                                    <GroupStyle.HeaderTemplate>
+                                        <DataTemplate>
+                                            <TextBlock Text="{Binding Name}" FontWeight="Bold"
+                                                       Margin="0,8,0,4" />
+                                        </DataTemplate>
+                                    </GroupStyle.HeaderTemplate>
+                                </GroupStyle>
+                            </ItemsControl.GroupStyle>
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <Border BorderBrush="{DynamicResource {x:Static SystemColors.ControlDarkBrushKey}}"
+                                            BorderThickness="1" CornerRadius="6" Padding="9" Margin="0,0,0,7">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <TextBlock Text="{Binding AppName}" FontWeight="SemiBold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                                <TextBlock DockPanel.Dock="Right"
+                                                           Text="{Binding UpdatedAtUtc, StringFormat={}{0:t}}"
+                                                           Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                                            </DockPanel>
+                                            <TextBlock Text="{Binding DisplayTitle}" FontWeight="SemiBold"
+                                                       TextWrapping="Wrap" Margin="0,3,0,0" />
+                                            <TextBlock Text="{Binding Text}" TextWrapping="Wrap" MaxHeight="64"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       Foreground="{DynamicResource {x:Static SystemColors.GrayTextBrushKey}}" />
+                                            <WrapPanel Margin="0,6,0,0">
+                                                <Button Content="Run action" Margin="0,0,6,0"
+                                                        Command="{Binding DataContext.InvokeFirstNotificationActionCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" />
+                                                <Button Content="Block app"
+                                                        Command="{Binding DataContext.BlockNotificationAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                        CommandParameter="{Binding}" />
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </StackPanel>
+                </GroupBox>
             </StackPanel>
-            <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
+            <WrapPanel Grid.Column="2" HorizontalAlignment="Right" VerticalAlignment="Bottom">
                 <StackPanel Width="190" Margin="0,0,12,0">
                     <TextBlock Text="{Binding OutgoingFileStatus}" TextTrimming="CharacterEllipsis" />
-                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding OutgoingFileProgress}" Height="8" />
+                    <ProgressBar Minimum="0" Maximum="100" Value="{Binding OutgoingFileProgress, Mode=OneWay}" Height="8" AutomationProperties.Name="Outgoing file progress" />
                 </StackPanel>
+                <Button Content="Phone files" Width="96" Margin="0,0,8,0" Click="PhoneFiles_Click" />
                 <Button Content="Send file" Width="88" Margin="0,0,8,0" Command="{Binding SendFileCommand}" />
                 <Button Content="Cancel file" Width="88" Margin="0,0,8,0" Command="{Binding CancelOutgoingFileCommand}" />
                 <Button Content="Start"
@@ -206,8 +304,11 @@
                 <Button Content="Stop" Width="88" Margin="0,0,8,0" Command="{Binding StopCommand}" />
                 <Button Content="Discovery" Width="88" Margin="0,0,8,0" Command="{Binding RestartDiscoveryCommand}" />
                 <Button Content="Add phone" Width="96" Margin="0,0,8,0" Click="AddPhone_Click" />
+                <Button Content="Support bundle" Width="112" Margin="0,0,8,0"
+                        Command="{Binding ExportSupportBundleCommand}" />
                 <Button Content="Disconnect" Width="104" Command="{Binding DisconnectCommand}" />
-            </StackPanel>
-        </DockPanel>
+            </WrapPanel>
+        </Grid>
     </Grid>
+    </ScrollViewer>
 </Window>

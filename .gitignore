@@ -1,0 +1,8 @@
+# .NET build intermediates and generated binaries
+**/bin/
+**/obj/
+
+# Historical and local release output
+windows/artifacts/
+windows/DeviceSync-current/
+release-current/

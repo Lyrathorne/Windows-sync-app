@@ -43,7 +43,11 @@ public sealed class ConnectionHandshakeHandler
             throw new ProtocolException("Only android hello messages are accepted.");
         }
 
-        if (payload.ProtocolVersion != ProtocolConstants.ProtocolVersion)
+        var negotiatedVersion = ProtocolVersionNegotiator.Negotiate(
+            payload.ProtocolVersion,
+            payload.ProtocolMin,
+            payload.ProtocolMax);
+        if (negotiatedVersion is null)
         {
             throw new ProtocolException("Hello payload protocol version is unsupported.");
         }
@@ -55,8 +59,8 @@ public sealed class ConnectionHandshakeHandler
             DeviceId = message.SenderDeviceId,
             DeviceName = payload.DeviceName,
             DeviceType = payload.DeviceType,
-            ProtocolVersion = payload.ProtocolVersion,
-            Capabilities = payload.Capabilities,
+            ProtocolVersion = negotiatedVersion.Value,
+            Capabilities = CapabilityNegotiator.Intersect(payload.Capabilities),
             ConnectedAtUtc = now,
             LastSeenAtUtc = now,
         };
@@ -65,7 +69,11 @@ public sealed class ConnectionHandshakeHandler
         {
             DeviceName = _windowsDeviceName,
             DeviceType = "windows",
-            AcceptedProtocolVersion = ProtocolConstants.ProtocolVersion,
+            AcceptedProtocolVersion = negotiatedVersion.Value,
+            ProtocolMin = ProtocolConstants.ProtocolMinVersion,
+            ProtocolMax = ProtocolConstants.ProtocolMaxVersion,
+            MaxFrameBytes = ProtocolConstants.MaxJsonMessageSize + ProtocolConstants.FrameHeaderSize,
+            MaxPayloadBytes = ProtocolConstants.MaxJsonPayloadSize,
             Capabilities = SupportedCapabilities.Values,
         };
 

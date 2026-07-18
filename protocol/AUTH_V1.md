@@ -6,7 +6,10 @@ Authenticated reconnect uses the existing TCP frame format:
 [4-byte big-endian length][JSON UTF-8 ProtocolMessage]
 ```
 
-TLS is not part of Auth V1.
+Auth V1 runs inside the pinned TLS transport. TLS protects confidentiality and
+binds the Windows transport key; the signed Auth V1 transcript additionally
+authenticates the long-lived DeviceSync identities. There is no plaintext
+fallback.
 
 ## Message Order
 
@@ -19,6 +22,10 @@ normal session traffic
 ```
 
 Heartbeat and pending application messages are allowed only after `auth.accepted`.
+
+Authentication establishes identity, not blanket automation permission. Each
+automatic feature must also pass the per-device policy in
+`../docs/TRUST_AND_AUTOMATION_POLICY.md`.
 
 ## Hello Additions
 

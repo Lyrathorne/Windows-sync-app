@@ -1,0 +1,868 @@
+<Window x:Class="DeviceSync.App.EdgePanelWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="{DynamicResource Loc.Edge.Title}"
+        Width="448" Height="620"
+        WindowStyle="None" ResizeMode="NoResize"
+        AllowsTransparency="False" Background="#01000000"
+        ShowInTaskbar="False" ShowActivated="False" Topmost="True"
+        FontFamily="Segoe UI Variable Text, Segoe UI"
+        FontSize="12"
+        PreviewKeyDown="Window_PreviewKeyDown"
+        MouseEnter="Window_MouseEnter"
+        MouseLeave="Window_MouseLeave">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+        <SolidColorBrush x:Key="Edge.Brush.Panel" Color="#180A101B" />
+        <SolidColorBrush x:Key="Edge.Brush.Rail" Color="#5C101723" />
+        <SolidColorBrush x:Key="Edge.Brush.Content" Color="#42101926" />
+        <SolidColorBrush x:Key="Edge.Brush.Card" Color="#52233042" />
+        <SolidColorBrush x:Key="Edge.Brush.CardHover" Color="#70304056" />
+        <SolidColorBrush x:Key="Edge.Brush.Border" Color="#3B91A1B8" />
+        <SolidColorBrush x:Key="Edge.Brush.Text" Color="#F5F8FC" />
+        <SolidColorBrush x:Key="Edge.Brush.Muted" Color="#A9B7C9" />
+        <SolidColorBrush x:Key="Edge.Brush.Accent" Color="#927CFF" />
+        <SolidColorBrush x:Key="Edge.Brush.Green" Color="#28D87A" />
+        <SolidColorBrush x:Key="Edge.Brush.Blue" Color="#34A9F5" />
+
+        <Style x:Key="Edge.Text.Title" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Text}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="Edge.Text.Body" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Text}" />
+            <Setter Property="TextWrapping" Value="Wrap" />
+        </Style>
+        <Style x:Key="Edge.Text.Muted" TargetType="TextBlock" BasedOn="{StaticResource Edge.Text.Body}">
+            <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Muted}" />
+            <Setter Property="FontSize" Value="12" />
+        </Style>
+        <Style x:Key="Edge.Card" TargetType="Border">
+            <Setter Property="Background" Value="{StaticResource Edge.Brush.Card}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Edge.Brush.Border}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="10" />
+            <Setter Property="Padding" Value="10" />
+        </Style>
+        <Style x:Key="Edge.IconButton" TargetType="Button">
+            <Setter Property="Width" Value="30" />
+            <Setter Property="Height" Value="30" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Muted}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle">
+                <Setter.Value>
+                    <Style TargetType="Control">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate>
+                                    <Border Margin="-2" BorderBrush="{StaticResource Edge.Brush.Accent}"
+                                            BorderThickness="2" CornerRadius="9" />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource Edge.Brush.CardHover}" />
+                                <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Text}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Edge.PrimaryButton" TargetType="Button">
+            <Setter Property="MinHeight" Value="34" />
+            <Setter Property="Padding" Value="11,7" />
+            <Setter Property="Foreground" Value="White" />
+            <Setter Property="Background" Value="#765BF1" />
+            <Setter Property="BorderBrush" Value="#8975F8" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                CornerRadius="9">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#826CF5" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#6248D6" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.45" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Edge.SecondaryButton" TargetType="Button" BasedOn="{StaticResource Edge.PrimaryButton}">
+            <Setter Property="Background" Value="{StaticResource Edge.Brush.Card}" />
+            <Setter Property="BorderBrush" Value="{StaticResource Edge.Brush.Border}" />
+            <Setter Property="FontWeight" Value="Normal" />
+        </Style>
+        <Style x:Key="Edge.LinkButton" TargetType="Button">
+            <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Accent}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter Margin="{TemplateBinding Padding}"
+                                              HorizontalAlignment="Center" VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource Edge.Brush.CardHover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.7" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Edge.FileRowButton" TargetType="Button">
+            <Setter Property="Height" Value="36" />
+            <Setter Property="Padding" Value="6,3" />
+            <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Text}" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderBrush" Value="{StaticResource Edge.Brush.Border}" />
+            <Setter Property="BorderThickness" Value="0,0,0,1" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Root" Background="{TemplateBinding Background}"
+                                BorderBrush="{TemplateBinding BorderBrush}"
+                                BorderThickness="{TemplateBinding BorderThickness}"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource Edge.Brush.CardHover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Root" Property="Opacity" Value="0.72" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="Edge.NavItem" TargetType="ListBoxItem">
+            <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Muted}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Padding" Value="11,9" />
+            <Setter Property="Margin" Value="0,1" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="FocusVisualStyle">
+                <Setter.Value>
+                    <Style TargetType="Control">
+                        <Setter Property="Template">
+                            <Setter.Value>
+                                <ControlTemplate>
+                                    <Border Margin="-2" BorderBrush="{StaticResource Edge.Brush.Accent}"
+                                            BorderThickness="2" CornerRadius="10" />
+                                </ControlTemplate>
+                            </Setter.Value>
+                        </Setter>
+                    </Style>
+                </Setter.Value>
+            </Setter>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="ListBoxItem">
+                        <Border x:Name="Root" Background="Transparent" CornerRadius="9"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="{StaticResource Edge.Brush.Card}" />
+                                <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Text}" />
+                            </Trigger>
+                            <Trigger Property="IsSelected" Value="True">
+                                <Setter TargetName="Root" Property="Background" Value="#486353D4" />
+                                <Setter Property="Foreground" Value="{StaticResource Edge.Brush.Text}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
+    <Grid>
+        <Border x:Name="ExpandedPanel"
+                Margin="0" Background="{StaticResource Edge.Brush.Panel}"
+                BorderBrush="{StaticResource Edge.Brush.Border}" BorderThickness="1"
+                CornerRadius="15" ClipToBounds="True">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="170" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <Border Grid.ColumnSpan="2" IsHitTestVisible="False" Opacity="0.55">
+                    <Border.Background>
+                        <RadialGradientBrush Center="0.08,0.76" GradientOrigin="0.08,0.76"
+                                             RadiusX="0.72" RadiusY="0.48">
+                            <GradientStop Color="#3B00D982" Offset="0" />
+                            <GradientStop Color="#171B75D0" Offset="0.48" />
+                            <GradientStop Color="#00101824" Offset="1" />
+                        </RadialGradientBrush>
+                    </Border.Background>
+                </Border>
+                <Border Grid.ColumnSpan="2" IsHitTestVisible="False" Opacity="0.42">
+                    <Border.Background>
+                        <RadialGradientBrush Center="0.92,0.2" GradientOrigin="0.92,0.2"
+                                             RadiusX="0.65" RadiusY="0.4">
+                            <GradientStop Color="#2F6B45D8" Offset="0" />
+                            <GradientStop Color="#00101824" Offset="1" />
+                        </RadialGradientBrush>
+                    </Border.Background>
+                </Border>
+
+                <Border Background="{StaticResource Edge.Brush.Rail}" BorderBrush="{StaticResource Edge.Brush.Border}"
+                        BorderThickness="0,0,1,0">
+                    <Grid Margin="9,11,9,9">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="Auto" />
+                            <RowDefinition Height="*" />
+                            <RowDefinition Height="Auto" />
+                        </Grid.RowDefinitions>
+                        <StackPanel Orientation="Horizontal" Margin="3,0,0,12">
+                            <Grid Width="22" Height="22" Margin="0,0,6,0">
+                                <Border Width="16" Height="11" CornerRadius="4" BorderThickness="2"
+                                        BorderBrush="{StaticResource Edge.Brush.Green}"
+                                        HorizontalAlignment="Left" VerticalAlignment="Top" />
+                                <Border Width="16" Height="11" CornerRadius="4" BorderThickness="2"
+                                        BorderBrush="{StaticResource Edge.Brush.Accent}"
+                                        HorizontalAlignment="Right" VerticalAlignment="Bottom" />
+                            </Grid>
+                            <TextBlock Text="DeviceSync" Foreground="{StaticResource Edge.Brush.Text}"
+                                       FontWeight="SemiBold" FontSize="13" VerticalAlignment="Center" />
+                        </StackPanel>
+
+                        <ListBox Grid.Row="1" SelectedIndex="{Binding Shell.SelectedSection, Mode=TwoWay}"
+                                 Background="Transparent" BorderThickness="0"
+                                 ItemContainerStyle="{StaticResource Edge.NavItem}"
+                                 ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                 ScrollViewer.VerticalScrollBarVisibility="Disabled"
+                                 KeyboardNavigation.TabNavigation="Cycle"
+                                 AutomationProperties.Name="{DynamicResource Loc.Navigation}">
+                            <ListBoxItem AutomationProperties.Name="{DynamicResource Loc.Nav.Devices}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE772;" FontFamily="Segoe MDL2 Assets" FontSize="13" Width="22" />
+                                    <TextBlock Text="{DynamicResource Loc.Nav.Devices}" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </ListBoxItem>
+                            <ListBoxItem AutomationProperties.Name="{DynamicResource Loc.Nav.Clipboard}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8C8;" FontFamily="Segoe MDL2 Assets" FontSize="13" Width="22" />
+                                    <TextBlock Text="{DynamicResource Loc.Nav.Clipboard}" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </ListBoxItem>
+                            <ListBoxItem AutomationProperties.Name="{DynamicResource Loc.Nav.Files}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="13" Width="22" />
+                                    <TextBlock Text="{DynamicResource Loc.Nav.Files}" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </ListBoxItem>
+                            <ListBoxItem AutomationProperties.Name="{DynamicResource Loc.Nav.Notifications}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xEA8F;" FontFamily="Segoe MDL2 Assets" FontSize="13" Width="22" />
+                                    <TextBlock Text="{DynamicResource Loc.Nav.Notifications}" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </ListBoxItem>
+                            <ListBoxItem AutomationProperties.Name="{DynamicResource Loc.Nav.Settings}">
+                                <StackPanel Orientation="Horizontal">
+                                    <TextBlock Text="&#xE713;" FontFamily="Segoe MDL2 Assets" FontSize="13" Width="22" />
+                                    <TextBlock Text="{DynamicResource Loc.Nav.Settings}" FontSize="12" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </ListBoxItem>
+                        </ListBox>
+
+                        <Border Grid.Row="2" Style="{StaticResource Edge.Card}" Padding="8" CornerRadius="9">
+                            <StackPanel Orientation="Horizontal">
+                                <Ellipse Width="7" Height="7" Fill="{StaticResource Edge.Brush.Green}" Margin="0,0,6,0" />
+                                <TextBlock Text="{DynamicResource Loc.SystemReady}" Style="{StaticResource Edge.Text.Muted}"
+                                           FontSize="8" TextTrimming="CharacterEllipsis" />
+                            </StackPanel>
+                        </Border>
+                    </Grid>
+                </Border>
+
+                <Grid Grid.Column="1" Background="{StaticResource Edge.Brush.Content}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="38" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid Margin="11,5,7,1">
+                        <Button HorizontalAlignment="Right" Style="{StaticResource Edge.IconButton}"
+                                Click="Collapse_Click" AutomationProperties.Name="{DynamicResource Loc.CollapsePanel}">
+                            <TextBlock Text="&#xE8BB;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                        </Button>
+                    </Grid>
+
+                    <TabControl Grid.Row="1" SelectedIndex="{Binding Shell.SelectedSection, Mode=TwoWay}"
+                                Background="Transparent" BorderThickness="0" Padding="0"
+                                KeyboardNavigation.TabNavigation="Cycle">
+                        <TabControl.ItemContainerStyle>
+                            <Style TargetType="TabItem">
+                                <Setter Property="Visibility" Value="Collapsed" />
+                            </Style>
+                        </TabControl.ItemContainerStyle>
+
+                        <TabItem Header="{DynamicResource Loc.Nav.Devices}">
+                            <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Margin="11,4,11,12" AutomationProperties.Name="{DynamicResource Loc.Nav.Devices}">
+                                    <TextBlock Text="{DynamicResource Loc.YourDevices}" Style="{StaticResource Edge.Text.Title}" />
+                                    <TextBlock Text="{DynamicResource Loc.DevicesSubtitle}" Style="{StaticResource Edge.Text.Muted}" Margin="0,3,0,12" />
+
+                                    <Border Margin="0,0,0,10">
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource Edge.Card}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Main.HasConnectedDevice}" Value="True">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="36" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Border Width="30" Height="38" CornerRadius="7" Background="#27334A">
+                                                <TextBlock Text="&#xE8EA;" FontFamily="Segoe MDL2 Assets" FontSize="16"
+                                                           Foreground="{StaticResource Edge.Brush.Blue}"
+                                                           HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                            </Border>
+                                            <StackPanel Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center">
+                                                <TextBlock Text="{Binding Main.ConnectedDeviceName}" Style="{StaticResource Edge.Text.Body}"
+                                                           FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                                                    <TextBlock Text="{DynamicResource Loc.Connected}" Foreground="{StaticResource Edge.Brush.Green}" FontSize="10" />
+                                                    <Ellipse Width="5" Height="5" Fill="{StaticResource Edge.Brush.Green}" Margin="5,0,0,0" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+
+                                    <Border Margin="0,0,0,10">
+                                        <Border.Style>
+                                            <Style TargetType="Border" BasedOn="{StaticResource Edge.Card}">
+                                                <Setter Property="Visibility" Value="Visible" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Main.HasConnectedDevice}" Value="True">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Border.Style>
+                                        <StackPanel>
+                                            <TextBlock Text="{DynamicResource Loc.NoDeviceConnected}" Style="{StaticResource Edge.Text.Body}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{DynamicResource Loc.ConnectPhoneHint}" Style="{StaticResource Edge.Text.Muted}" Margin="0,4,0,0" />
+                                            <Button Content="{DynamicResource Loc.ConnectPhone}"
+                                                    Command="{Binding Main.AddPhoneCommand}"
+                                                    Margin="0,10,0,0"
+                                                    AutomationProperties.Name="{DynamicResource Loc.ConnectPhone}">
+                                                <Button.Style>
+                                                    <Style TargetType="Button" BasedOn="{StaticResource Edge.PrimaryButton}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Main.IsPairingVisible}" Value="True">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </Button.Style>
+                                            </Button>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <Border Style="{StaticResource Edge.Card}" Margin="0,0,0,10"
+                                            Visibility="{Binding Main.IsPairingVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                        <StackPanel>
+                                            <TextBlock Text="{DynamicResource Loc.Pairing.Title}" Style="{StaticResource Edge.Text.Body}"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock Text="{Binding Main.PairingState}" Style="{StaticResource Edge.Text.Muted}"
+                                                       Margin="0,3,0,9" AutomationProperties.LiveSetting="Polite" />
+                                            <Border Background="White" CornerRadius="8" Padding="7" HorizontalAlignment="Center">
+                                                <Image Source="{Binding Main.PairingQrImage}" Width="166" Height="166"
+                                                       Stretch="Uniform" RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                                       AutomationProperties.Name="{DynamicResource Loc.Pairing.QrName}" />
+                                            </Border>
+                                            <Grid Margin="0,10,0,0">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="Auto" />
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Text="{DynamicResource Loc.Pairing.TimeRemaining}" Style="{StaticResource Edge.Text.Muted}" />
+                                                <TextBlock Grid.Column="1" Text="{Binding Main.PairingTimeRemaining}"
+                                                           Foreground="{StaticResource Edge.Brush.Text}" FontWeight="SemiBold" />
+                                            </Grid>
+                                            <TextBlock Text="{Binding Main.PairingVerificationCode}" FontSize="24"
+                                                       FontWeight="SemiBold" Foreground="{StaticResource Edge.Brush.Text}"
+                                                       HorizontalAlignment="Center" Margin="0,8,0,0" />
+                                            <UniformGrid Columns="2" Margin="0,9,0,0"
+                                                         Visibility="{Binding Main.IsPairingConfirmationVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                                <Button Content="{DynamicResource Loc.Pairing.Matches}"
+                                                        Command="{Binding Main.ConfirmPairingCodeCommand}"
+                                                        Style="{StaticResource Edge.PrimaryButton}" Margin="0,0,4,0" />
+                                                <Button Content="{DynamicResource Loc.Pairing.DoesNotMatch}"
+                                                        Command="{Binding Main.RejectPairingCodeCommand}"
+                                                        Style="{StaticResource Edge.SecondaryButton}" Margin="4,0,0,0" />
+                                            </UniformGrid>
+                                            <StackPanel Margin="0,9,0,0">
+                                                <Button Content="{DynamicResource Loc.Pairing.NewCode}"
+                                                        Command="{Binding Main.NewPairingCodeCommand}"
+                                                        Style="{StaticResource Edge.SecondaryButton}" />
+                                                <Button Content="{DynamicResource Loc.Cancel}"
+                                                        Command="{Binding Main.CancelPairingCommand}"
+                                                        Style="{StaticResource Edge.SecondaryButton}" Margin="0,7,0,0" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Border>
+
+                                    <TextBlock Text="{DynamicResource Loc.TrustedPhones}" Style="{StaticResource Edge.Text.Body}"
+                                               FontWeight="SemiBold" Margin="0,5,0,7" />
+                                    <ItemsControl ItemsSource="{Binding Main.TrustedPhones}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Style="{StaticResource Edge.Card}" Margin="0,0,0,7" Padding="10">
+                                                    <Grid>
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="*" />
+                                                            <ColumnDefinition Width="Auto" />
+                                                        </Grid.ColumnDefinitions>
+                                                        <StackPanel>
+                                                            <TextBlock Text="{Binding DeviceName}" Style="{StaticResource Edge.Text.Body}"
+                                                                       FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                                                            <TextBlock Text="{DynamicResource Loc.Trusted}" Style="{StaticResource Edge.Text.Muted}" />
+                                                        </StackPanel>
+                                                        <Button Grid.Column="1" Content="&#xE74D;" FontFamily="Segoe MDL2 Assets"
+                                                                Command="{Binding DataContext.Main.RevokeTrustedPhoneCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding DeviceId}"
+                                                                Style="{StaticResource Edge.IconButton}"
+                                                                AutomationProperties.Name="{DynamicResource Loc.RevokeTrust}" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <TabItem Header="{DynamicResource Loc.Nav.Clipboard}">
+                            <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Margin="11,4,11,12" AutomationProperties.Name="{DynamicResource Loc.Nav.Clipboard}">
+                                    <TextBlock Text="{DynamicResource Loc.Nav.Clipboard}" Style="{StaticResource Edge.Text.Title}" />
+                                    <TextBlock Text="{DynamicResource Loc.ClipboardSubtitle}" Style="{StaticResource Edge.Text.Muted}" Margin="0,3,0,12" />
+                                    <Border Style="{StaticResource Edge.Card}">
+                                        <StackPanel>
+                                            <CheckBox Content="{DynamicResource Loc.EnableClipboard}"
+                                                      IsChecked="{Binding Main.ClipboardSyncEnabled}"
+                                                      Foreground="{StaticResource Edge.Brush.Text}" MinHeight="32" />
+                                            <CheckBox Content="{DynamicResource Loc.EnableClipboardForDevice}"
+                                                      IsChecked="{Binding Main.ClipboardDeviceEnabled}"
+                                                      IsEnabled="{Binding Main.HasConnectedClipboardDevice}"
+                                                      Foreground="{StaticResource Edge.Brush.Text}" MinHeight="32" />
+                                        </StackPanel>
+                                    </Border>
+                                    <Button Content="{DynamicResource Loc.SendClipboard}" Command="{Binding Main.SendClipboardCommand}"
+                                            Style="{StaticResource Edge.PrimaryButton}" Margin="0,10,0,14" />
+                                    <Grid>
+                                        <TextBlock Text="{DynamicResource Loc.RecentText}" Style="{StaticResource Edge.Text.Body}" FontWeight="SemiBold" />
+                                        <Button Content="{DynamicResource Loc.Clear}" HorizontalAlignment="Right"
+                                                Command="{Binding Main.ClearSharedTextHistoryCommand}"
+                                                Style="{StaticResource Edge.SecondaryButton}" MinHeight="28" Padding="8,4" />
+                                    </Grid>
+                                    <TextBlock Text="{DynamicResource Loc.NoClipboardHistory}" Margin="0,7,0,0">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Edge.Text.Muted}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Main.SharedTextHistory.Count}" Value="0">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <ItemsControl ItemsSource="{Binding Main.SharedTextHistory}" Margin="0,7,0,0">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Style="{StaticResource Edge.Card}" Margin="0,0,0,7" Padding="10">
+                                                    <Grid>
+                                                        <Grid.RowDefinitions>
+                                                            <RowDefinition Height="Auto" />
+                                                            <RowDefinition Height="Auto" />
+                                                        </Grid.RowDefinitions>
+                                                        <TextBlock Text="{Binding Text}" Style="{StaticResource Edge.Text.Body}"
+                                                                   MaxHeight="72" TextTrimming="CharacterEllipsis" />
+                                                        <TextBlock Grid.Row="1" Text="{Binding ReceivedAtUtc, StringFormat={}{0:t}}"
+                                                                   Style="{StaticResource Edge.Text.Muted}" FontSize="9" Margin="0,4,0,0" />
+                                                    </Grid>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    <Border Style="{StaticResource Edge.Card}" AllowDrop="True" Margin="0,7,0,0"
+                                            DragOver="QuickSend_DragOver" Drop="QuickSend_Drop">
+                                        <StackPanel>
+                                            <TextBlock Text="{DynamicResource Loc.QuickSend}" Style="{StaticResource Edge.Text.Body}"
+                                                       FontWeight="SemiBold" />
+                                            <Border x:Name="QuickSendDropZone" CornerRadius="9" Margin="0,8,0,0"
+                                                    Background="#182B3650" DragEnter="QuickSend_DragEnter"
+                                                    DragLeave="QuickSend_DragLeave">
+                                                <Grid MinHeight="96">
+                                                    <Rectangle x:Name="QuickSendDropOutline"
+                                                               Margin="1" RadiusX="9" RadiusY="9"
+                                                               Stroke="{StaticResource Edge.Brush.Border}"
+                                                               StrokeThickness="1" StrokeDashArray="4 3" />
+                                                    <Button Command="{Binding Main.SendFileCommand}"
+                                                            Background="Transparent" BorderThickness="0"
+                                                            Cursor="Hand" Padding="12"
+                                                            AutomationProperties.Name="{DynamicResource Loc.SendFile}">
+                                                        <StackPanel HorizontalAlignment="Center">
+                                                            <TextBlock Text="&#xE8B7;" FontFamily="Segoe MDL2 Assets" FontSize="18"
+                                                                       Foreground="{StaticResource Edge.Brush.Accent}" HorizontalAlignment="Center" />
+                                                            <TextBlock Text="{DynamicResource Loc.QuickSendDrop}"
+                                                                       Foreground="{StaticResource Edge.Brush.Text}"
+                                                                       TextAlignment="Center" Margin="0,7,0,0" />
+                                                            <TextBlock Text="{DynamicResource Loc.QuickSendBrowse}"
+                                                                       Foreground="{StaticResource Edge.Brush.Accent}"
+                                                                       FontSize="10" TextAlignment="Center" Margin="0,2,0,0" />
+                                                        </StackPanel>
+                                                    </Button>
+                                                </Grid>
+                                            </Border>
+                                            <ProgressBar Value="{Binding Main.OutgoingFileProgress, Mode=OneWay}" Maximum="100"
+                                                         Height="4" Foreground="{StaticResource Edge.Brush.Accent}"
+                                                         Background="#263247" Margin="0,9,0,0" />
+                                            <TextBlock Text="{Binding Main.OutgoingFileStatus}" Style="{StaticResource Edge.Text.Muted}"
+                                                       Margin="0,6,0,0" TextTrimming="CharacterEllipsis" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <TabItem Header="{DynamicResource Loc.Nav.Files}">
+                            <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Margin="11,4,11,12" AutomationProperties.Name="{DynamicResource Loc.Nav.Files}">
+                                    <Grid>
+                                        <TextBlock Text="{DynamicResource Loc.Nav.Files}" Style="{StaticResource Edge.Text.Title}" />
+                                        <Button HorizontalAlignment="Right" Style="{StaticResource Edge.IconButton}"
+                                                Click="RefreshRecentFiles_Click"
+                                                AutomationProperties.Name="{DynamicResource Loc.Refresh}">
+                                            <TextBlock Text="&#xE72C;" FontFamily="Segoe MDL2 Assets" FontSize="12" />
+                                        </Button>
+                                    </Grid>
+                                    <TextBlock Text="{DynamicResource Loc.FilesSubtitle}" Style="{StaticResource Edge.Text.Muted}" Margin="0,3,0,12" />
+                                    <Button Content="{DynamicResource Loc.OpenPhoneFiles}" Style="{StaticResource Edge.SecondaryButton}"
+                                            Click="OpenPhoneFiles_Click" Margin="0,2,0,10" />
+                                    <Border Style="{StaticResource Edge.Card}" Margin="0,0,0,10" Padding="10">
+                                        <StackPanel>
+                                            <TextBlock Text="{DynamicResource Loc.QuickAccess}" Style="{StaticResource Edge.Text.Body}"
+                                                       FontWeight="SemiBold" />
+                                            <TextBlock Text="{DynamicResource Loc.QuickAccessHint}" Style="{StaticResource Edge.Text.Muted}"
+                                                       Margin="0,3,0,8" />
+                                            <Border Height="1" Background="{StaticResource Edge.Brush.Border}" Margin="0,0,0,9" />
+
+                                            <Grid Margin="0,0,0,7">
+                                                <TextBlock Text="{DynamicResource Loc.RecentPhotos}" Style="{StaticResource Edge.Text.Body}"
+                                                           FontWeight="SemiBold" />
+                                                <Button Content="{DynamicResource Loc.OpenAll}" HorizontalAlignment="Right"
+                                                        Click="OpenPhoneFiles_Click" Style="{StaticResource Edge.LinkButton}"
+                                                        Padding="4,0" MinHeight="24" />
+                                            </Grid>
+                                            <ScrollViewer HorizontalScrollBarVisibility="Hidden" VerticalScrollBarVisibility="Disabled"
+                                                          PanningMode="HorizontalOnly" Margin="0,0,0,9">
+                                                <ItemsControl ItemsSource="{Binding Recent.Photos}">
+                                                    <ItemsControl.ItemsPanel>
+                                                        <ItemsPanelTemplate><StackPanel Orientation="Horizontal" /></ItemsPanelTemplate>
+                                                    </ItemsControl.ItemsPanel>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Width="56" Height="78" Margin="0,0,5,0" Padding="0"
+                                                                    Background="Transparent" BorderThickness="0"
+                                                                    Click="RecentItemActions_Click"
+                                                                    AutomationProperties.Name="{Binding DisplayName}">
+                                                                <Button.ContextMenu>
+                                                                    <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                                                                 Opened="RecentActionsMenu_Opened" Closed="RecentActionsMenu_Closed">
+                                                                        <MenuItem Header="{DynamicResource Loc.CopyPhoto}"
+                                                                                  Click="CopyRecentPhoto_Click" />
+                                                                        <MenuItem Header="{DynamicResource Loc.Download}"
+                                                                                  Click="DownloadRecentItem_Click" />
+                                                                        <Separator />
+                                                                        <MenuItem Header="{DynamicResource Loc.OpenAll}"
+                                                                                  Click="OpenPhoneFiles_Click" />
+                                                                    </ContextMenu>
+                                                                </Button.ContextMenu>
+                                                                <Grid ClipToBounds="True">
+                                                                    <Border CornerRadius="7" Background="#27334A" />
+                                                                    <TextBlock Text="&#xEB9F;" FontFamily="Segoe MDL2 Assets" FontSize="17"
+                                                                               Foreground="{StaticResource Edge.Brush.Muted}"
+                                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                    <Image Source="{Binding Thumbnail}" Stretch="UniformToFill">
+                                                                        <Image.Style>
+                                                                            <Style TargetType="Image">
+                                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                                                <Style.Triggers>
+                                                                                    <DataTrigger Binding="{Binding IsThumbnailVisible}" Value="True">
+                                                                                        <Setter Property="Visibility" Value="Visible" />
+                                                                                    </DataTrigger>
+                                                                                </Style.Triggers>
+                                                                            </Style>
+                                                                        </Image.Style>
+                                                                    </Image>
+                                                                    <Border VerticalAlignment="Bottom" Background="#A0101623" Padding="5,3">
+                                                                        <TextBlock Text="{Binding ModifiedDisplay}" Foreground="White" FontSize="9"
+                                                                                   TextTrimming="CharacterEllipsis" />
+                                                                    </Border>
+                                                                </Grid>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </ScrollViewer>
+
+                                            <Grid Margin="0,0,0,6">
+                                                <TextBlock Text="{DynamicResource Loc.RecentFiles}" Style="{StaticResource Edge.Text.Body}"
+                                                           FontWeight="SemiBold" />
+                                                <Button Content="{DynamicResource Loc.OpenAll}" HorizontalAlignment="Right"
+                                                        Click="OpenPhoneFiles_Click" Style="{StaticResource Edge.LinkButton}"
+                                                        Padding="4,0" MinHeight="24" />
+                                            </Grid>
+                                            <TextBlock Text="{Binding Recent.FileStatus}" TextWrapping="Wrap"
+                                                       Foreground="{StaticResource Edge.Brush.Muted}" FontSize="9" Margin="0,0,0,5">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Recent.FileStatus}" Value="">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                            <Border Background="#1D2636" BorderBrush="{StaticResource Edge.Brush.Border}"
+                                                    BorderThickness="1" CornerRadius="8" ClipToBounds="True">
+                                                <ItemsControl ItemsSource="{Binding Recent.Files}" HorizontalAlignment="Stretch">
+                                                    <ItemsControl.ItemContainerStyle>
+                                                        <Style TargetType="ContentPresenter">
+                                                            <Setter Property="HorizontalAlignment" Value="Stretch" />
+                                                        </Style>
+                                                    </ItemsControl.ItemContainerStyle>
+                                                    <ItemsControl.ItemTemplate>
+                                                        <DataTemplate>
+                                                            <Button Style="{StaticResource Edge.FileRowButton}"
+                                                                HorizontalAlignment="Stretch"
+                                                                Click="RecentItemActions_Click"
+                                                                AutomationProperties.Name="{Binding DisplayName}">
+                                                            <Button.ContextMenu>
+                                                                <ContextMenu DataContext="{Binding PlacementTarget.DataContext, RelativeSource={RelativeSource Self}}"
+                                                                             Opened="RecentActionsMenu_Opened" Closed="RecentActionsMenu_Closed">
+                                                                    <MenuItem Header="{DynamicResource Loc.Download}"
+                                                                              Click="DownloadRecentItem_Click" />
+                                                                    <Separator />
+                                                                    <MenuItem Header="{DynamicResource Loc.OpenAll}"
+                                                                              Click="OpenPhoneFiles_Click" />
+                                                                </ContextMenu>
+                                                            </Button.ContextMenu>
+                                                                <Grid>
+                                                                    <Grid.ColumnDefinitions>
+                                                                        <ColumnDefinition Width="27" />
+                                                                        <ColumnDefinition Width="*" />
+                                                                        <ColumnDefinition Width="52" />
+                                                                    </Grid.ColumnDefinitions>
+                                                                    <Border Width="22" Height="26" CornerRadius="5" Background="#27334A">
+                                                                    <TextBlock Text="&#xE8A5;" FontFamily="Segoe MDL2 Assets"
+                                                                               Foreground="{StaticResource Edge.Brush.Blue}"
+                                                                               HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                                    </Border>
+                                                                    <StackPanel Grid.Column="1" Margin="5,0,5,0" VerticalAlignment="Center">
+                                                                        <TextBlock Text="{Binding DisplayName}" Foreground="{StaticResource Edge.Brush.Text}"
+                                                                                   FontWeight="SemiBold" FontSize="11"
+                                                                                   TextTrimming="CharacterEllipsis" TextWrapping="NoWrap" />
+                                                                        <TextBlock Text="{Binding SizeDisplay}" Foreground="{StaticResource Edge.Brush.Muted}"
+                                                                                   FontSize="8" />
+                                                                    </StackPanel>
+                                                                    <TextBlock Grid.Column="2" Text="{Binding ModifiedDisplay}"
+                                                                               Foreground="{StaticResource Edge.Brush.Muted}" FontSize="8"
+                                                                               TextAlignment="Right" TextTrimming="CharacterEllipsis"
+                                                                               VerticalAlignment="Center" />
+                                                                </Grid>
+                                                            </Button>
+                                                        </DataTemplate>
+                                                    </ItemsControl.ItemTemplate>
+                                                </ItemsControl>
+                                            </Border>
+                                            <TextBlock Text="{Binding Recent.Status}"
+                                                       TextTrimming="CharacterEllipsis" Margin="0,4,0,0">
+                                                <TextBlock.Style>
+                                                    <Style TargetType="TextBlock" BasedOn="{StaticResource Edge.Text.Muted}">
+                                                        <Style.Triggers>
+                                                            <DataTrigger Binding="{Binding Recent.Status}" Value="">
+                                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                            </DataTrigger>
+                                                        </Style.Triggers>
+                                                    </Style>
+                                                </TextBlock.Style>
+                                            </TextBlock>
+                                        </StackPanel>
+                                    </Border>
+                                    <Border Style="{StaticResource Edge.Card}" AllowDrop="True"
+                                            DragOver="QuickSend_DragOver" Drop="QuickSend_Drop">
+                                        <StackPanel>
+                                            <TextBlock Text="{DynamicResource Loc.QuickSend}" Style="{StaticResource Edge.Text.Body}" FontWeight="SemiBold" />
+                                            <TextBlock Text="{DynamicResource Loc.QuickSendHint}" Style="{StaticResource Edge.Text.Muted}" Margin="0,3,0,8" />
+                                            <ProgressBar Value="{Binding Main.OutgoingFileProgress, Mode=OneWay}" Maximum="100"
+                                                         Height="5" Foreground="{StaticResource Edge.Brush.Accent}"
+                                                         Background="#263247" />
+                                            <TextBlock Text="{Binding Main.OutgoingFileStatus}" Style="{StaticResource Edge.Text.Muted}"
+                                                       Margin="0,7,0,0" />
+                                            <Button Content="{DynamicResource Loc.SendFile}" Command="{Binding Main.SendFileCommand}"
+                                                    Style="{StaticResource Edge.PrimaryButton}" Margin="0,9,0,0" />
+                                            <Button Content="{DynamicResource Loc.CancelTransfer}" Command="{Binding Main.CancelOutgoingFileCommand}"
+                                                    Style="{StaticResource Edge.SecondaryButton}" Margin="0,7,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <TabItem Header="{DynamicResource Loc.Nav.Notifications}">
+                            <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Margin="11,4,11,12" AutomationProperties.Name="{DynamicResource Loc.Nav.Notifications}">
+                                    <Grid>
+                                        <TextBlock Text="{DynamicResource Loc.Notifications}" Style="{StaticResource Edge.Text.Title}" />
+                                        <Button Content="{DynamicResource Loc.Clear}" HorizontalAlignment="Right"
+                                                Command="{Binding Main.ClearNotificationHistoryCommand}"
+                                                Style="{StaticResource Edge.SecondaryButton}" MinHeight="28" Padding="8,4" />
+                                    </Grid>
+                                    <TextBlock Text="{DynamicResource Loc.NotificationsSubtitle}" Style="{StaticResource Edge.Text.Muted}" Margin="0,3,0,12" />
+                                    <Border Style="{StaticResource Edge.Card}" Margin="0,0,0,10">
+                                        <StackPanel>
+                                            <CheckBox Content="{DynamicResource Loc.NotificationToasts}"
+                                                      IsChecked="{Binding Main.NotificationToastsEnabled}"
+                                                      Foreground="{StaticResource Edge.Brush.Text}" />
+                                            <CheckBox Content="{DynamicResource Loc.HideSensitiveNotifications}"
+                                                      IsChecked="{Binding Main.HideSensitiveNotificationsWhenLocked}"
+                                                      Foreground="{StaticResource Edge.Brush.Text}" Margin="0,7,0,0" />
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock Text="{DynamicResource Loc.NoNotifications}" Margin="0,0,0,7">
+                                        <TextBlock.Style>
+                                            <Style TargetType="TextBlock" BasedOn="{StaticResource Edge.Text.Muted}">
+                                                <Setter Property="Visibility" Value="Collapsed" />
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Main.Notifications.Count}" Value="0">
+                                                        <Setter Property="Visibility" Value="Visible" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </TextBlock.Style>
+                                    </TextBlock>
+                                    <ItemsControl ItemsSource="{Binding Main.Notifications}">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate>
+                                                <Border Style="{StaticResource Edge.Card}" Margin="0,0,0,7" Padding="10">
+                                                    <StackPanel>
+                                                        <TextBlock Text="{Binding AppName}" Style="{StaticResource Edge.Text.Muted}" />
+                                                        <TextBlock Text="{Binding Title}" Style="{StaticResource Edge.Text.Body}" FontWeight="SemiBold" />
+                                                        <TextBlock Text="{Binding Text}" Style="{StaticResource Edge.Text.Muted}"
+                                                                   MaxHeight="58" TextTrimming="CharacterEllipsis" />
+                                                        <Button Content="{DynamicResource Loc.BlockApp}"
+                                                                Command="{Binding DataContext.Main.BlockNotificationAppCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                                CommandParameter="{Binding}"
+                                                                Style="{StaticResource Edge.SecondaryButton}" Margin="0,7,0,0" />
+                                                    </StackPanel>
+                                                </Border>
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+
+                        <TabItem Header="{DynamicResource Loc.Nav.Settings}">
+                            <ScrollViewer VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Disabled">
+                                <StackPanel Margin="11,4,11,12" AutomationProperties.Name="{DynamicResource Loc.Nav.Settings}">
+                                    <TextBlock Text="{DynamicResource Loc.Nav.Settings}" Style="{StaticResource Edge.Text.Title}" />
+                                    <TextBlock Text="{DynamicResource Loc.SettingsSubtitle}" Style="{StaticResource Edge.Text.Muted}" Margin="0,3,0,12" />
+                                    <Border Style="{StaticResource Edge.Card}">
+                                        <StackPanel>
+                                            <CheckBox Content="{DynamicResource Loc.EnableEdgePanel}" IsChecked="{Binding Shell.Enabled}"
+                                                      Foreground="{StaticResource Edge.Brush.Text}" MinHeight="32" />
+                                            <CheckBox Content="{DynamicResource Loc.StartWindows}" IsChecked="{Binding Main.StartWithWindows}"
+                                                      Foreground="{StaticResource Edge.Brush.Text}" MinHeight="32" />
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock Text="{DynamicResource Loc.ScreenEdge}" Style="{StaticResource Edge.Text.Muted}" Margin="0,12,0,6" />
+                                    <UniformGrid Columns="2">
+                                        <Button Content="{DynamicResource Loc.Left}" Tag="Left" Click="Side_Click"
+                                                Style="{StaticResource Edge.SecondaryButton}" Margin="0,0,4,0" />
+                                        <Button Content="{DynamicResource Loc.Right}" Tag="Right" Click="Side_Click"
+                                                Style="{StaticResource Edge.SecondaryButton}" Margin="4,0,0,0" />
+                                    </UniformGrid>
+                                    <TextBlock Text="{DynamicResource Loc.HoverDelay}" Style="{StaticResource Edge.Text.Muted}" Margin="0,13,0,3" />
+                                    <Slider Minimum="0" Maximum="1200" TickFrequency="50" IsSnapToTickEnabled="True"
+                                            Value="{Binding Shell.HoverDelayMilliseconds, Mode=TwoWay}"
+                                            AutomationProperties.Name="{DynamicResource Loc.HoverDelay}" />
+                                    <Button Content="{DynamicResource Loc.OpenDiagnostics}" Style="{StaticResource Edge.SecondaryButton}"
+                                            Click="OpenDiagnostics_Click" Margin="0,16,0,0"
+                                            AutomationProperties.Name="{DynamicResource Loc.OpenDiagnostics}" />
+                                    <TextBlock Text="{DynamicResource Loc.KeyboardHint}" Style="{StaticResource Edge.Text.Muted}"
+                                               Margin="0,12,0,0" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </TabItem>
+                    </TabControl>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>

@@ -87,6 +87,28 @@ public sealed class AuthHandshakeHandlerTests
     }
 
     [Fact]
+    public async Task RevokedAndroid_DuringExplicitQrSession_IsAskedToPairAgain()
+    {
+        using var windowsKey = new FakeDeviceIdentityKeyProvider();
+        using var androidKey = new FakeDeviceIdentityKeyProvider();
+        var identity = new FakeIdentityProvider("windows-test");
+        var trusted = new FakeTrustedDeviceRepository();
+        await trusted.SaveTrustedDeviceAsync(AndroidTrust(androidKey, TrustStatuses.Revoked) with
+        {
+            RevokedAtUtc = DateTimeOffset.UtcNow,
+        });
+        var pairing = new PairingSessionManager(identity, windowsKey);
+        await pairing.StartPairingAsync(54321, ["192.168.1.10"]);
+        var handler = new AuthHandshakeHandler(identity, windowsKey, trusted, pairingSessionManager: pairing);
+
+        var result = await handler.BuildChallengeAsync(Hello(androidKey));
+
+        Assert.Null(result.Attempt);
+        var payload = ProtocolSerializer.DecodePayload<ProtocolErrorPayload>(result.Response.Payload);
+        Assert.Equal("PAIRING_REQUIRED", payload.Code);
+    }
+
+    [Fact]
     public async Task MismatchHelloMessageId_IsRejected()
     {
         using var windowsKey = new FakeDeviceIdentityKeyProvider();

@@ -1,0 +1,136 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <Style x:Key="Ds.Window" TargetType="Window">
+        <Setter Property="Background" Value="{DynamicResource Ds.Brush.Background}" />
+        <Setter Property="Foreground" Value="{DynamicResource Ds.Brush.OnSurface}" />
+        <Setter Property="FontFamily" Value="Segoe UI Variable Text, Segoe UI" />
+        <Setter Property="FontSize" Value="{DynamicResource Ds.Type.Body}" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
+    </Style>
+
+    <Style x:Key="Ds.Text.TitleLarge" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{DynamicResource Ds.Type.TitleLarge}" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="Foreground" Value="{DynamicResource Ds.Brush.OnSurface}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="Ds.Text.Title" TargetType="TextBlock" BasedOn="{StaticResource Ds.Text.TitleLarge}">
+        <Setter Property="FontSize" Value="{DynamicResource Ds.Type.Title}" />
+    </Style>
+    <Style x:Key="Ds.Text.Body" TargetType="TextBlock">
+        <Setter Property="FontSize" Value="{DynamicResource Ds.Type.Body}" />
+        <Setter Property="Foreground" Value="{DynamicResource Ds.Brush.OnSurface}" />
+        <Setter Property="TextWrapping" Value="Wrap" />
+    </Style>
+    <Style x:Key="Ds.Text.Muted" TargetType="TextBlock" BasedOn="{StaticResource Ds.Text.Body}">
+        <Setter Property="FontSize" Value="{DynamicResource Ds.Type.BodySmall}" />
+        <Setter Property="Foreground" Value="{DynamicResource Ds.Brush.OnSurfaceMuted}" />
+    </Style>
+    <Style x:Key="Ds.Text.Caption" TargetType="TextBlock" BasedOn="{StaticResource Ds.Text.Muted}">
+        <Setter Property="FontSize" Value="{DynamicResource Ds.Type.Label}" />
+    </Style>
+
+    <Style x:Key="Ds.Card" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Ds.Brush.Surface}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Ds.Brush.Outline}" />
+        <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="CornerRadius" Value="{DynamicResource Ds.Radius.Card}" />
+        <Setter Property="Padding" Value="16" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Effect" Value="{DynamicResource Ds.Elevation.Card}" />
+    </Style>
+
+    <Style x:Key="Ds.Button.Primary" TargetType="Button">
+        <Setter Property="MinHeight" Value="44" />
+        <Setter Property="MinWidth" Value="88" />
+        <Setter Property="Padding" Value="16,10" />
+        <Setter Property="Foreground" Value="{DynamicResource Ds.Brush.OnPrimary}" />
+        <Setter Property="Background" Value="{DynamicResource Ds.Brush.Primary}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Ds.Brush.Primary}" />
+        <Setter Property="BorderThickness" Value="2" />
+        <Setter Property="FontWeight" Value="SemiBold" />
+        <Setter Property="FocusVisualStyle">
+            <Setter.Value>
+                <Style TargetType="Control">
+                    <Setter Property="Template">
+                        <Setter.Value>
+                            <ControlTemplate>
+                                <Border Margin="-4" BorderBrush="{DynamicResource Ds.Brush.Primary}" BorderThickness="2" CornerRadius="14" />
+                            </ControlTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource Ds.Radius.Control}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource Ds.Brush.PrimaryHover}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource Ds.Brush.PrimaryPressed}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.48" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Ds.Button.Secondary" TargetType="Button" BasedOn="{StaticResource Ds.Button.Primary}">
+        <Setter Property="Foreground" Value="{DynamicResource Ds.Brush.OnSurface}" />
+        <Setter Property="Background" Value="{DynamicResource Ds.Brush.SurfaceVariant}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource Ds.Brush.Outline}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="Button">
+                    <Border x:Name="Root" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}"
+                            BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="{DynamicResource Ds.Radius.Control}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="{TemplateBinding Padding}" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource Ds.Brush.SurfaceVariantHover}" />
+                        </Trigger>
+                        <Trigger Property="IsPressed" Value="True">
+                            <Setter TargetName="Root" Property="Background" Value="{DynamicResource Ds.Brush.SurfaceVariantPressed}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter TargetName="Root" Property="Opacity" Value="0.48" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style x:Key="Ds.Progress" TargetType="ProgressBar">
+        <Setter Property="Height" Value="8" />
+        <Setter Property="Foreground" Value="{DynamicResource Ds.Brush.Primary}" />
+        <Setter Property="Background" Value="{DynamicResource Ds.Brush.SurfaceVariant}" />
+    </Style>
+
+    <Style x:Key="Ds.Button.Navigation" TargetType="Button" BasedOn="{StaticResource Ds.Button.Secondary}">
+        <Setter Property="MinWidth" Value="0" />
+        <Setter Property="MinHeight" Value="48" />
+        <Setter Property="Padding" Value="4,10" />
+        <Setter Property="FontSize" Value="11" />
+        <Setter Property="HorizontalContentAlignment" Value="Center" />
+    </Style>
+
+    <Style x:Key="Ds.Skeleton" TargetType="Border">
+        <Setter Property="Background" Value="{DynamicResource Ds.Brush.SurfaceVariant}" />
+        <Setter Property="CornerRadius" Value="{DynamicResource Ds.Radius.Compact}" />
+        <Setter Property="Height" Value="16" />
+        <Setter Property="Opacity" Value="0.75" />
+    </Style>
+</ResourceDictionary>

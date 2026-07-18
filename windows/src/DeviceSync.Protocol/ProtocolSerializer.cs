@@ -18,6 +18,7 @@ public static class ProtocolSerializer
     {
         try
         {
+            ValidatePayloadSize(message.Payload);
             return JsonSerializer.Serialize(message, Options);
         }
         catch (JsonException error)
@@ -30,8 +31,10 @@ public static class ProtocolSerializer
     {
         try
         {
-            return JsonSerializer.Deserialize<ProtocolMessage>(rawJson, Options)
+            var message = JsonSerializer.Deserialize<ProtocolMessage>(rawJson, Options)
                 ?? throw new ProtocolException("Message JSON is empty.");
+            ValidatePayloadSize(message.Payload);
+            return message;
         }
         catch (JsonException error)
         {
@@ -54,6 +57,14 @@ public static class ProtocolSerializer
         catch (JsonException error)
         {
             throw new ProtocolException("Payload JSON is invalid.", error);
+        }
+    }
+
+    private static void ValidatePayloadSize(JsonElement payload)
+    {
+        if (System.Text.Encoding.UTF8.GetByteCount(payload.GetRawText()) > ProtocolConstants.MaxJsonPayloadSize)
+        {
+            throw new ProtocolException(ProtocolErrorCodes.PayloadTooLarge);
         }
     }
 }

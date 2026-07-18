@@ -12,7 +12,7 @@ Every message is sent as:
 
 The length is a signed 32-bit integer in big-endian byte order. It is the number of UTF-8 bytes in the JSON payload, not the number of characters.
 
-Valid JSON payload sizes are `1..1048576` bytes.
+Valid JSON frame-body sizes are `1..1048576` bytes. The `payload` JSON value is limited to `983040` UTF-8 bytes. See [PROTOCOL_NEGOTIATION_V1.md](PROTOCOL_NEGOTIATION_V1.md) for negotiated limits and migration rules.
 
 ## JSON
 
@@ -29,6 +29,7 @@ The envelope is:
   "recipientDeviceId": null,
   "timestampUtc": "2026-07-05T18:45:00Z",
   "correlationId": null,
+  "originDeviceId": null,
   "requiresAcknowledgement": false,
   "payload": {}
 }
@@ -48,11 +49,7 @@ Timestamps are UTC ISO-8601 strings.
 
 ## Capabilities
 
-The current shared capability strings are:
-
-`heartbeat-v1`
-`ack-v1`
-`reconnect-v1`
+Capability names, implemented/reserved status, and explicit refusal rules are defined in [PROTOCOL_NEGOTIATION_V1.md](PROTOCOL_NEGOTIATION_V1.md). A peer advertises only implemented features.
 
 ## Payloads
 
@@ -64,6 +61,10 @@ The current shared capability strings are:
   "deviceType": "android",
   "appVersion": "1.0",
   "protocolVersion": 1,
+  "protocolMin": 1,
+  "protocolMax": 1,
+  "maxFrameBytes": 1048580,
+  "maxPayloadBytes": 983040,
   "capabilities": ["heartbeat-v1", "ack-v1", "reconnect-v1"]
 }
 ```
@@ -75,6 +76,10 @@ The current shared capability strings are:
   "deviceName": "Windows PC",
   "deviceType": "windows",
   "acceptedProtocolVersion": 1,
+  "protocolMin": 1,
+  "protocolMax": 1,
+  "maxFrameBytes": 1048580,
+  "maxPayloadBytes": 983040,
   "capabilities": ["heartbeat-v1", "ack-v1", "reconnect-v1"]
 }
 ```
@@ -147,3 +152,15 @@ Either side may send `connection.close`. Windows closes only that client session
 ## Compatibility Rules
 
 New fields may be added to payloads if old readers can ignore them. Existing message type strings, envelope field names, frame byte order, and maximum JSON size must not change inside protocol version 1.
+## Transport capabilities
+
+The logical DeviceSync protocol is transport-independent. Current local transport capabilities are:
+
+- `transport-lan-tls-v1`;
+- `transport-hotspot-v1`;
+- `transport-usb-v1`;
+- `transport-bluetooth-v1`.
+
+Every transport must establish pinned TLS before the DeviceSync Auth V1 exchange. A transport switch creates a fresh authenticated connection; File Transfer V1 and other non-resumable operations fail explicitly instead of being silently continued on another stream. Only one reader may own a logical device session at a time, and repeated message IDs must not be routed twice.
+
+Bluetooth is a constrained profile: maximum file size 2 MiB, 24 KiB file chunks, bounded writer queues, and no media catalog, thumbnails, folder sync, or File Transfer V2.

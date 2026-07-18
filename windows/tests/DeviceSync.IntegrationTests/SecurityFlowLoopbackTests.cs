@@ -52,6 +52,8 @@ public sealed class SecurityFlowLoopbackTests
                 JsonOptions)!;
 
             await android.PairAsync(parsedQr, fixture.Pairing);
+            await WaitUntilAsync(async () =>
+                (await fixture.Trust.GetTrustedDeviceAsync(android.DeviceId))?.TrustStatus == TrustStatuses.Active);
             var trustedAndroid = await fixture.Trust.GetTrustedDeviceAsync(android.DeviceId);
             Assert.Equal(TrustStatuses.Active, trustedAndroid?.TrustStatus);
             Assert.Null(fixture.Pairing.CurrentSession);
@@ -243,6 +245,15 @@ public sealed class SecurityFlowLoopbackTests
     {
         using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
         while (!predicate())
+        {
+            await Task.Delay(20, cts.Token);
+        }
+    }
+
+    private static async Task WaitUntilAsync(Func<Task<bool>> predicate)
+    {
+        using var cts = new CancellationTokenSource(TimeSpan.FromSeconds(3));
+        while (!await predicate())
         {
             await Task.Delay(20, cts.Token);
         }

@@ -1,0 +1,1 @@
+{"protocolVersion":1,"messageId":"10000000-0000-4000-8000-000000000009","type":"catalog.cancel","senderDeviceId":"windows-device","timestampUtc":"2026-07-15T10:05:01Z","requiresAcknowledgement":false,"payload":{"requestId":"30000000-0000-4000-8000-000000000001","reason":"view_closed"}}

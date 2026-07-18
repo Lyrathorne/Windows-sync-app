@@ -1,15 +1,19 @@
 # DeviceSync TLS Pinning Plan
 
-This stage does not enable TLS and does not implement a custom TLS replacement.
+Status: implemented and covered by persistence, corruption, and pin-rejection tests.
 
-The next stage should:
+Current implementation:
 
-1. create a Windows self-signed TLS certificate;
-2. bind that certificate to the Windows identity key;
-3. save the certificate or public-key fingerprint on Android after pairing;
-4. use TLS certificate pinning on Android;
-5. let Windows verify the Android client through a client certificate or signed identity proof;
-6. migrate the current authenticated handshake onto TLS;
-7. remove plaintext transport after migration.
+1. Windows creates and persists a self-signed TLS certificate through the Windows identity key provider.
+2. Pairing QR includes the Windows TLS public-key SPKI SHA-256 fingerprint.
+3. Android pins that SPKI before the pairing connection and stores it in the trusted-device record.
+4. Windows accepts TLS 1.2/1.3 with `SslStream`; Android uses `SSLSocket` and rejects a mismatched pin.
+5. DeviceSync application identity is mutually authenticated by the signed Auth V1 transcript inside TLS.
+6. Normal and pairing sessions do not intentionally fall back to plaintext.
+7. Integration tests cover TLS success and bad-pin rejection.
 
-The current `PinnedDeviceIdentity` model reserves `FutureTlsCertificateFingerprint` for that migration.
+Operational lifecycle, legacy-record migration, explicit recovery, rotation policy, and the manual packet-capture release check are documented in `../docs/TLS_IDENTITY_LIFECYCLE.md`.
+
+Future transport variants must preserve this boundary: capability negotiation may select a transport, but it must never permit a plaintext downgrade. Per-device automation authorization remains separate from identity trust.
+
+See `../docs/TRUST_AND_AUTOMATION_POLICY.md`.

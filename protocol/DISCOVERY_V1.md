@@ -1,5 +1,16 @@
 # DeviceSync Discovery V1
 
+When more than one usable physical LAN address exists, discovery TXT records include:
+
+- `addressCount`: number of advertised IPv4 addresses;
+- `addresses`: comma-separated physical LAN IPv4 addresses in preference order;
+- `endpoints`: semicolon-separated `kind|address|port` candidates.
+
+Clients must deduplicate candidates and may race at most three endpoints. Selection is not
+complete until TLS SPKI pinning and the DeviceSync identity handshake succeed. VPN, tunnel,
+loopback, APIPA and unsupported virtual adapters must not be advertised. A route/interface
+change invalidates the current discovery snapshot and triggers republication.
+
 mDNS/DNS-SD is used only to discover the network address of a DeviceSync Windows service. It does not authenticate the computer and must not be treated as cryptographic trust.
 
 ## Service Type

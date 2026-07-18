@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -21,6 +21,10 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Launch", "Launch", "{888888
 		Install-DeviceSync-Shortcut.ps1 = Install-DeviceSync-Shortcut.ps1
 		Run-DeviceSync-Latest.ps1 = Run-DeviceSync-Latest.ps1
 	EndProjectSection
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{8931EDCD-90F1-4A04-A37E-990802267C0C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DeviceSync.App.Tests", "tests\DeviceSync.App.Tests\DeviceSync.App.Tests.csproj", "{8FD684F1-F3D7-47B7-BE45-576947763C02}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -56,5 +60,12 @@ Global
 		{77777777-7777-7777-7777-777777777777}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{77777777-7777-7777-7777-777777777777}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{77777777-7777-7777-7777-777777777777}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8FD684F1-F3D7-47B7-BE45-576947763C02}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8FD684F1-F3D7-47B7-BE45-576947763C02}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8FD684F1-F3D7-47B7-BE45-576947763C02}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8FD684F1-F3D7-47B7-BE45-576947763C02}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{8FD684F1-F3D7-47B7-BE45-576947763C02} = {8931EDCD-90F1-4A04-A37E-990802267C0C}
 	EndGlobalSection
 EndGlobal

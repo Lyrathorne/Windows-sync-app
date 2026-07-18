@@ -1,0 +1,1 @@
+{"protocolVersion":1,"messageId":"10000000-0000-4000-8000-000000000007","type":"catalog.permission","senderDeviceId":"android-device","timestampUtc":"2026-07-15T10:04:00Z","requiresAcknowledgement":false,"payload":{"state":"revoked","grantedCategories":[],"canRequest":true,"reasonCode":"user_revoked"}}

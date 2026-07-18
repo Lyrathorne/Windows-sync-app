@@ -7,8 +7,9 @@
 - Pair the devices and verify that reconnect authentication succeeds.
 - Confirm that both hello messages advertise `file-transfer-v1`.
 
-The current transport is authenticated but remains plaintext until the TLS
-milestone is completed. Use non-sensitive test files only.
+The current transport uses pinned TLS plus the authenticated DeviceSync
+identity handshake. The test must fail rather than fall back to plaintext when
+the stored SPKI pin is wrong.
 
 ## Happy path
 

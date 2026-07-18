@@ -28,17 +28,20 @@ public sealed class AuthHandshakeHandler
     private readonly IWindowsDeviceIdentityProvider _identityProvider;
     private readonly IDeviceIdentityKeyProvider _keyProvider;
     private readonly ITrustedDeviceRepository _trustedDeviceRepository;
+    private readonly IPairingSessionManager? _pairingSessionManager;
     private readonly string _windowsDeviceName;
 
     public AuthHandshakeHandler(
         IWindowsDeviceIdentityProvider identityProvider,
         IDeviceIdentityKeyProvider keyProvider,
         ITrustedDeviceRepository trustedDeviceRepository,
-        string? windowsDeviceName = null)
+        string? windowsDeviceName = null,
+        IPairingSessionManager? pairingSessionManager = null)
     {
         _identityProvider = identityProvider;
         _keyProvider = keyProvider;
         _trustedDeviceRepository = trustedDeviceRepository;
+        _pairingSessionManager = pairingSessionManager;
         _windowsDeviceName = string.IsNullOrWhiteSpace(windowsDeviceName)
             ? Environment.MachineName
             : windowsDeviceName;
@@ -53,13 +56,17 @@ public sealed class AuthHandshakeHandler
 
         if (hello.ProtocolVersion != ProtocolConstants.ProtocolVersion || string.IsNullOrWhiteSpace(hello.MessageId) || string.IsNullOrWhiteSpace(hello.SenderDeviceId))
         {
-            return Rejected(hello, "UNSUPPORTED_PROTOCOL");
+            return Rejected(hello, ProtocolErrorCodes.UnsupportedProtocolVersion);
         }
 
         var payload = ProtocolSerializer.DecodePayload<ConnectionHelloPayload>(hello.Payload);
-        if (payload.ProtocolVersion != ProtocolConstants.ProtocolVersion || payload.DeviceType != "android")
+        var negotiatedVersion = ProtocolVersionNegotiator.Negotiate(
+            payload.ProtocolVersion,
+            payload.ProtocolMin,
+            payload.ProtocolMax);
+        if (negotiatedVersion is null || payload.DeviceType != "android")
         {
-            return Rejected(hello, "UNSUPPORTED_PROTOCOL");
+            return Rejected(hello, ProtocolErrorCodes.UnsupportedProtocolVersion);
         }
 
         if (string.IsNullOrWhiteSpace(payload.IdentityFingerprint) ||
@@ -78,6 +85,16 @@ public sealed class AuthHandshakeHandler
 
         if (trusted.TrustStatus == TrustStatuses.Revoked || trusted.RevokedAtUtc is not null)
         {
+            // Starting a QR flow is an explicit user action. During that short-lived
+            // window tell a previously revoked client to enter pairing mode instead
+            // of trapping it in its old authenticated-reconnect loop.
+            var pairing = _pairingSessionManager?.CurrentSession;
+            if (pairing is not null &&
+                !pairing.IsConsumed &&
+                DateTimeOffset.UtcNow <= pairing.ExpiresAtUtc)
+            {
+                return Rejected(hello, "PAIRING_REQUIRED");
+            }
             return Rejected(hello, "TRUST_REVOKED");
         }
 
@@ -95,7 +112,7 @@ public sealed class AuthHandshakeHandler
         var windowsFingerprint = await _keyProvider.GetPublicKeyFingerprintAsync(cancellationToken).ConfigureAwait(false);
         var serverNonce = SecurityEncoding.Base64UrlEncode(RandomNumberGenerator.GetBytes(32));
         var transcript = TranscriptBuilder.SessionAuth(
-            ProtocolConstants.ProtocolVersion,
+            negotiatedVersion.Value,
             hello.SenderDeviceId,
             windowsDeviceId,
             payload.IdentityFingerprint,
@@ -116,8 +133,8 @@ public sealed class AuthHandshakeHandler
             ClientNonce = payload.ClientNonce,
             ServerNonce = serverNonce,
             Transcript = transcript,
-            ProtocolVersion = payload.ProtocolVersion,
-            Capabilities = payload.Capabilities,
+            ProtocolVersion = negotiatedVersion.Value,
+            Capabilities = CapabilityNegotiator.Intersect(payload.Capabilities),
         };
 
         return new AuthChallengeResult(new ProtocolMessage
@@ -135,6 +152,8 @@ public sealed class AuthHandshakeHandler
                 WindowsIdentityFingerprint = windowsFingerprint,
                 ServerSignature = signature,
                 HelloMessageId = hello.MessageId,
+                AcceptedProtocolVersion = negotiatedVersion.Value,
+                Capabilities = SupportedCapabilities.Values,
             }),
         }, attempt);
     }
@@ -187,7 +206,12 @@ public sealed class AuthHandshakeHandler
             RecipientDeviceId = attempt.AndroidDeviceId,
             TimestampUtc = DateTimeOffset.UtcNow.ToString("O"),
             CorrelationId = response.MessageId,
-            Payload = ProtocolSerializer.PayloadToJson(new AuthAcceptedPayload { Status = "accepted" }),
+            Payload = ProtocolSerializer.PayloadToJson(new AuthAcceptedPayload
+            {
+                Status = "accepted",
+                AcceptedProtocolVersion = attempt.ProtocolVersion,
+                Capabilities = SupportedCapabilities.Values,
+            }),
         };
         return AuthVerifyResult.Accepted(accepted, session);
     }

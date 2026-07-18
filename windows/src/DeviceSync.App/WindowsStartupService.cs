@@ -12,6 +12,28 @@ public sealed class WindowsStartupService
         get { using var key = Registry.CurrentUser.OpenSubKey(SettingsKey); return key?.GetValue("ClipboardEnabled") is 1; }
         set { using var key = Registry.CurrentUser.CreateSubKey(SettingsKey); key.SetValue("ClipboardEnabled", value ? 1 : 0, RegistryValueKind.DWord); }
     }
+
+    public IReadOnlySet<string> ClipboardAllowedDeviceIds
+    {
+        get
+        {
+            using var key = Registry.CurrentUser.OpenSubKey(SettingsKey);
+            return (key?.GetValue("ClipboardAllowedDeviceIds") as string[] ?? [])
+                .Where(value => !string.IsNullOrWhiteSpace(value))
+                .ToHashSet(StringComparer.Ordinal);
+        }
+    }
+
+    public bool IsClipboardAllowedForDevice(string? deviceId) =>
+        !string.IsNullOrWhiteSpace(deviceId) && ClipboardAllowedDeviceIds.Contains(deviceId);
+
+    public void SetClipboardAllowedForDevice(string deviceId, bool allowed)
+    {
+        var updated = ClipboardAllowedDeviceIds.ToHashSet(StringComparer.Ordinal);
+        if (allowed) updated.Add(deviceId); else updated.Remove(deviceId);
+        using var key = Registry.CurrentUser.CreateSubKey(SettingsKey);
+        key.SetValue("ClipboardAllowedDeviceIds", updated.OrderBy(value => value).ToArray(), RegistryValueKind.MultiString);
+    }
     public bool IsEnabled
     {
         get

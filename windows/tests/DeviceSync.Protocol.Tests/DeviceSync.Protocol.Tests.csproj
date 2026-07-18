@@ -13,4 +13,24 @@
           Link="TestVectors\file-transfer\%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\protocol\test-vectors\negotiation\*.json"
+          Link="TestVectors\negotiation\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\protocol\test-vectors\clipboard\*.json"
+          Link="TestVectors\clipboard\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\protocol\test-vectors\media-catalog\*.json"
+          Link="TestVectors\media-catalog\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\..\..\protocol\test-vectors\notifications\*.json"
+          Link="TestVectors\notifications\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

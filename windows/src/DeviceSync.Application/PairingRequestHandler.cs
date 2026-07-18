@@ -214,6 +214,24 @@ public sealed class PairingRequestHandler
         return _pairingSessionManager.IsReadyForAccepted(sessionId);
     }
 
+    public bool CanContinueWaitingForAccepted(string sessionId)
+    {
+        var session = _pairingSessionManager.CurrentSession;
+        return session is not null &&
+            session.SessionId == sessionId &&
+            !session.IsConsumed &&
+            DateTimeOffset.UtcNow <= session.ExpiresAtUtc &&
+            _pairingSessionManager.State is not (PairingState.Expired or PairingState.Rejected or PairingState.Disabled);
+    }
+
+    public ProtocolMessage BuildPairingWaitEnded(ProtocolMessage correlation)
+    {
+        var code = _pairingSessionManager.State == PairingState.Expired
+            ? "PAIRING_EXPIRED"
+            : "PAIRING_CANCELLED";
+        return ProtocolError(correlation, code);
+    }
+
     public async Task<ProtocolMessage> BuildAcceptedForCurrentSessionAsync(ProtocolMessage correlation, CancellationToken cancellationToken = default)
     {
         var session = _pairingSessionManager.CurrentSession ?? throw new ProtocolException("Pairing session is missing.");

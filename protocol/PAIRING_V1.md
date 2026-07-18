@@ -1,6 +1,6 @@
 # DeviceSync Pairing V1
 
-Pairing V1 binds an Android installation and a Windows installation using long-lived ECDSA P-256 identity keys and a one-time QR pairing secret. The TCP transport remains plaintext in this stage.
+Pairing V1 binds an Android installation and a Windows installation using long-lived ECDSA P-256 identity keys and a one-time QR pairing secret. The QR also carries the Windows TLS SPKI fingerprint, and Android pins it before opening the pairing TLS connection. Pairing has no plaintext fallback.
 
 ## Algorithms
 
@@ -148,6 +148,11 @@ Trusted records are saved only after:
 5. `pairing.accepted` is sent.
 
 Discovery TXT fingerprints are only hints. They do not replace QR or trust-store verification.
+
+Pairing activates identity trust only. Automatic clipboard, files,
+notifications, media access, and folder synchronization require the separate
+per-device authorization policy in `../docs/TRUST_AND_AUTOMATION_POLICY.md`.
+
 ## Runtime TCP Flow
 
 Pairing uses the normal DeviceSync TCP framing, but it is a separate short-lived session. It does not send `connection.hello`, does not start heartbeat, and does not register an authenticated device session.

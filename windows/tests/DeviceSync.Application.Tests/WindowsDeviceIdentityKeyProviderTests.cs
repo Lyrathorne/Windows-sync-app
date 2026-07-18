@@ -84,6 +84,63 @@ public sealed class WindowsDeviceIdentityKeyProviderTests
         var restarted = new WindowsDeviceIdentityKeyProvider(storage, protector);
         Assert.Equal(await first.GetServerSpkiFingerprintAsync(), await restarted.GetServerSpkiFingerprintAsync());
     }
+
+    [Fact]
+    public async Task IdentityKey_PersistsInFileStorageAcrossProcessLikeRestart()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"devicesync-identity-{Guid.NewGuid():N}");
+        var keyPath = Path.Combine(directory, "identity-key.bin");
+
+        try
+        {
+            var first = new WindowsDeviceIdentityKeyProvider(
+                new FileProtectedKeyStorage(keyPath),
+                new PassThroughProtector());
+            var firstIdentityFingerprint = await first.GetPublicKeyFingerprintAsync();
+            var firstTlsFingerprint = await first.GetServerSpkiFingerprintAsync();
+
+            var restarted = new WindowsDeviceIdentityKeyProvider(
+                new FileProtectedKeyStorage(keyPath),
+                new PassThroughProtector());
+
+            Assert.True(File.Exists(keyPath));
+            Assert.Equal(firstIdentityFingerprint, await restarted.GetPublicKeyFingerprintAsync());
+            Assert.Equal(firstTlsFingerprint, await restarted.GetServerSpkiFingerprintAsync());
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task CorruptedFileStorage_RequiresExplicitRecovery()
+    {
+        var directory = Path.Combine(Path.GetTempPath(), $"devicesync-identity-{Guid.NewGuid():N}");
+        var keyPath = Path.Combine(directory, "identity-key.bin");
+
+        try
+        {
+            Directory.CreateDirectory(directory);
+            await File.WriteAllBytesAsync(keyPath, [1, 2, 3]);
+            var provider = new WindowsDeviceIdentityKeyProvider(
+                new FileProtectedKeyStorage(keyPath),
+                new PassThroughProtector());
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => provider.GetServerSpkiFingerprintAsync());
+            Assert.Equal(new byte[] { 1, 2, 3 }, await File.ReadAllBytesAsync(keyPath));
+        }
+        finally
+        {
+            if (Directory.Exists(directory))
+            {
+                Directory.Delete(directory, recursive: true);
+            }
+        }
+    }
 }
 
 internal sealed class MemoryProtectedKeyStorage : IProtectedKeyStorage

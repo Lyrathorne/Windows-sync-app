@@ -58,7 +58,16 @@ public sealed class SimpleMdnsServiceDiscoveryPublisher : IServiceDiscoveryPubli
             };
             _udp.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             _udp.Client.Bind(new IPEndPoint(IPAddress.Any, MdnsPort));
-            _udp.JoinMulticastGroup(MulticastAddress);
+            if (!IPAddress.TryParse(service.AdvertisedAddress, out var localInterface) ||
+                localInterface.AddressFamily != AddressFamily.InterNetwork)
+            {
+                throw new InvalidOperationException("No physical local IPv4 address is available for mDNS publication.");
+            }
+            _udp.Client.SetSocketOption(
+                SocketOptionLevel.IP,
+                SocketOptionName.MulticastInterface,
+                localInterface.GetAddressBytes());
+            _udp.JoinMulticastGroup(MulticastAddress, localInterface);
             _listenTask = ListenAsync(_cts.Token);
             await AnnounceAsync(service, _cts.Token).ConfigureAwait(false);
             LastPublishedAtUtc = DateTimeOffset.UtcNow;

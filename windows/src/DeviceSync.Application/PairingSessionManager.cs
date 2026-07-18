@@ -46,7 +46,9 @@ public sealed class PairingSessionManager : IPairingSessionManager
             PairingSecret = RandomNumberGenerator.GetBytes(32),
             WindowsNonce = RandomNumberGenerator.GetBytes(32),
             CreatedAtUtc = DateTimeOffset.UtcNow,
-            ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(2),
+            // Five minutes tolerates a slow camera launch and modest clock skew while
+            // keeping the one-time secret short-lived.
+            ExpiresAtUtc = DateTimeOffset.UtcNow.AddMinutes(5),
         };
 
         var payload = new PairingQrPayload
@@ -188,6 +190,13 @@ public sealed class PairingSessionManager : IPairingSessionManager
         lock (_gate)
         {
             var session = CurrentSession;
+            if (session is not null &&
+                session.SessionId == sessionId &&
+                DateTimeOffset.UtcNow > session.ExpiresAtUtc)
+            {
+                SetState(PairingState.Expired);
+                return false;
+            }
             return session is not null &&
                 session.SessionId == sessionId &&
                 session.RequestHmacVerified &&

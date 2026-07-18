@@ -221,6 +221,43 @@ public sealed class IncomingFileTransferManagerTests
         Assert.Equal("duplicate_transfer_id", DecodeErrorCode<FileRejectPayload>(repeated!));
     }
 
+    [Fact]
+    public async Task OversizedAndDangerousOffers_AreRejectedBeforePartCreation()
+    {
+        var storage = new FakeIncomingFileStorage();
+        var manager = CreateManager(storage);
+
+        var oversized = await manager.HandleOfferAsync(SenderDeviceId,
+            Offer([1]) with { SizeBytes = IncomingFileTransferManager.MaximumFileSize + 1 });
+        Assert.Equal("file_too_large", DecodeErrorCode<FileRejectPayload>(oversized!));
+        Assert.False(storage.TemporaryExists);
+
+        var dangerous = await manager.HandleOfferAsync(SenderDeviceId,
+            Offer([1], "payload.exe") with { TransferId = Guid.NewGuid().ToString() });
+        Assert.Equal("CONTENT_TYPE_BLOCKED", DecodeErrorCode<FileRejectPayload>(dangerous!));
+        Assert.False(storage.TemporaryExists);
+    }
+
+    [Fact]
+    public async Task TrustRevokedDuringTransfer_FailsAndDeletesPart()
+    {
+        var storage = new FakeIncomingFileStorage();
+        var guard = new MutableTransferGuard();
+        var manager = new IncomingFileTransferManager(
+            storage,
+            new FakeDecisionService(true),
+            transferGuard: guard);
+        var bytes = new byte[] { 1, 2, 3 };
+        await manager.HandleOfferAsync(SenderDeviceId, Offer(bytes));
+        Assert.True(storage.TemporaryExists);
+
+        guard.Allowed = false;
+        var response = await manager.HandleChunkAsync(SenderDeviceId, Chunk(bytes, 0, 0, bytes.Length));
+
+        AssertError(response, "TRUST_REVOKED");
+        Assert.False(storage.TemporaryExists);
+    }
+
     private static IncomingFileTransferManager CreateManager(FakeIncomingFileStorage storage, bool accepted = true)
         => new(storage, new FakeDecisionService(accepted));
 
@@ -328,6 +365,13 @@ public sealed class IncomingFileTransferManagerTests
             IncomingFileTransfer transfer,
             CancellationToken cancellationToken = default)
             => Task.FromResult(new IncomingFileTransferDecision(accepted));
+    }
+
+    private sealed class MutableTransferGuard : IIncomingFileTransferGuard
+    {
+        public bool Allowed { get; set; } = true;
+        public Task<bool> IsTransferAllowedAsync(string senderDeviceId, CancellationToken cancellationToken = default)
+            => Task.FromResult(Allowed);
     }
 
     private sealed class DirectoryDecisionService(string directory) : IIncomingFileTransferDecisionService

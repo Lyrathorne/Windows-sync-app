@@ -9,4 +9,7 @@ public sealed record DeviceSessionInfo
     public IReadOnlyList<string> Capabilities { get; init; } = [];
     public required DateTimeOffset ConnectedAtUtc { get; init; }
     public DateTimeOffset LastSeenAtUtc { get; init; }
+    public DeviceTransportKind TransportKind { get; init; } = DeviceTransportKind.Lan;
+    public bool IsSlowTransport { get; init; }
+    public string? TransportAddress { get; init; }
 }

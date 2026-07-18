@@ -54,6 +54,7 @@ public sealed class IncomingFileViewModel : ObservableObject
     }
 
     public event EventHandler? ShowRequested;
+    public event EventHandler? CloseRequested;
 
     public ICommand AcceptCommand => _acceptCommand;
     public ICommand RejectCommand => _rejectCommand;
@@ -105,6 +106,25 @@ public sealed class IncomingFileViewModel : ObservableObject
     {
         if (_transfer?.TransferId != args.Transfer.TransferId)
         {
+            if (args.Transfer.State != IncomingFileTransferState.Accepted) return;
+            Dispatch(() =>
+            {
+                _transfer = args.Transfer;
+                DeviceName = _sessions.ActiveSession?.DeviceName ?? args.Transfer.SenderDeviceId;
+                FileName = args.Transfer.FileName;
+                FileSize = FormatBytes(args.Transfer.SizeBytes);
+                MimeType = args.Transfer.MimeType;
+                SaveDirectory = args.Transfer.DestinationPath is { } destination
+                    ? Path.GetDirectoryName(destination) ?? _storage.DefaultReceiveDirectory
+                    : _storage.DefaultReceiveDirectory;
+                ProgressPercent = 0;
+                ProgressText = $"0 B / {FormatBytes(args.Transfer.SizeBytes)}";
+                SpeedText = "0 B/s";
+                Status = StateText(args.Transfer.State);
+                Error = "";
+                RefreshCommands();
+                ShowRequested?.Invoke(this, EventArgs.Empty);
+            });
             return;
         }
 
@@ -141,6 +161,7 @@ public sealed class IncomingFileViewModel : ObservableObject
         {
             Status = "Accepting...";
             RefreshCommands();
+            CloseRequested?.Invoke(this, EventArgs.Empty);
         }
         return Task.CompletedTask;
     }
@@ -151,8 +172,17 @@ public sealed class IncomingFileViewModel : ObservableObject
         {
             Status = "Rejected";
             RefreshCommands();
+            CloseRequested?.Invoke(this, EventArgs.Empty);
         }
         return Task.CompletedTask;
+    }
+
+    public void OnWindowClosing()
+    {
+        if (_transfer is not null && CanDecide)
+        {
+            _decisions.Reject(_transfer.TransferId, "window_closed");
+        }
     }
 
     private Task ChooseFolderAsync()
@@ -174,6 +204,7 @@ public sealed class IncomingFileViewModel : ObservableObject
     {
         await _manager.CancelByReceiverAsync();
         RefreshCommands();
+        CloseRequested?.Invoke(this, EventArgs.Empty);
     }
 
     private Task OpenFileAsync()

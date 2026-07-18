@@ -34,10 +34,22 @@ public static class ProtocolMessageTypes
     public const string ClipboardUpdate = "clipboard.update";
     public const string TextShare = "text.share";
     public const string NotificationPosted = "notification.posted";
+    public const string NotificationUpdated = "notification.updated";
     public const string NotificationRemoved = "notification.removed";
+    public const string NotificationActionInvoke = "notification.action.invoke";
+    public const string NotificationActionResult = "notification.action.result";
     public const string FolderManifest = "folder.manifest";
     public const string FolderPlan = "folder.plan";
     public const string FolderPlanApproved = "folder.plan.approved";
     public const string FolderCancel = "folder.cancel";
     public const string FolderError = "folder.error";
+    public const string CatalogQuery = "catalog.query";
+    public const string CatalogPage = "catalog.page";
+    public const string CatalogChanged = "catalog.changed";
+    public const string CatalogThumbnailRequest = "catalog.thumbnail.request";
+    public const string CatalogThumbnailResponse = "catalog.thumbnail.response";
+    public const string CatalogFileDownloadRequest = "catalog.file.download.request";
+    public const string CatalogPermission = "catalog.permission";
+    public const string CatalogError = "catalog.error";
+    public const string CatalogCancel = "catalog.cancel";
 }
